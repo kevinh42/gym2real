@@ -1,0 +1,7 @@
+stores:
+  critical:
+    controller_input: 92
+    controller_output: 36
+
+  general:
+    TEST: 512
