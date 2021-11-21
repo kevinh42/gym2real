@@ -160,11 +160,19 @@ ENV PATH=/usr/local/nvidia/bin:/usr/local/cuda/bin:${PATH}
 ENV CUDACXX=/usr/local/cuda/bin/nvcc
 
 RUN ln -s /usr/local/cuda/lib64/libcudadevrt.so /usr/local/cuda-10.2/targets/aarch64-linux/lib/stubs/libcudadevrt.so
+RUN ln -s /usr/local/cuda/lib64/libcudart.so /usr/local/cuda-10.2/targets/aarch64-linux/lib/stubs/libcudart.so
 RUN ln -s /usr/local/cuda/lib64/libcudart.so /usr/local/cuda-10.2/targets/aarch64-linux/lib/libcudart.so
+RUN ln -s /usr/local/cuda/lib64/libcudadevrt.so /usr/local/cuda-10.2/targets/aarch64-linux/lib/libcudadevrt.so
 RUN nvcc --version
 RUN cd /tmp && \
-    git clone --recursive --single-branch --branch v${ONNXRUNTIME_VERSION} https://github.com/Microsoft/onnxruntime && \
-    cd onnxruntime && \
+    git clone --recursive --single-branch --branch v${ONNXRUNTIME_VERSION} https://github.com/Microsoft/onnxruntime
+
+RUN ln -s /usr/local/cuda/lib64/libcudadevrt.a /usr/local/cuda-10.2/targets/aarch64-linux/lib/stubs/libcudadevrt.a
+RUN ln -s /usr/local/cuda/lib64/libcudart_static.a /usr/local/cuda-10.2/targets/aarch64-linux/lib/stubs/libcudart_static.a
+RUN ln -s /usr/local/cuda/lib64/libcudart_static.a /usr/local/cuda-10.2/targets/aarch64-linux/lib/libcudart_static.a
+RUN ln -s /usr/local/cuda/lib64/libcudadevrt.a /usr/local/cuda-10.2/targets/aarch64-linux/lib/libcudadevrt.a
+
+RUN cd /tmp/onnxruntime && \
     ./build.sh \
         --use_cuda \
         --cuda_home /usr/local/cuda \
