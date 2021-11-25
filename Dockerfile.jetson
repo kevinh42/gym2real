@@ -156,22 +156,9 @@ RUN sed -i \
 RUN echo 'source ${ROS_ROOT}/install/setup.bash' >> /root/.bashrc
 
 # Install ONNX Runtime
-# ENV PATH=/usr/local/nvidia/bin:/usr/local/cuda/bin:${PATH}
-# ENV CUDACXX=/usr/local/cuda/bin/nvcc
-
-# RUN ln -s /usr/local/cuda/lib64/libcudadevrt.so /usr/local/cuda-10.2/targets/aarch64-linux/lib/stubs/libcudadevrt.so
-# RUN ln -s /usr/local/cuda/lib64/libcudart.so /usr/local/cuda-10.2/targets/aarch64-linux/lib/stubs/libcudart.so
-# RUN ln -s /usr/local/cuda/lib64/libcudart.so /usr/local/cuda-10.2/targets/aarch64-linux/lib/libcudart.so
-# RUN ln -s /usr/local/cuda/lib64/libcudadevrt.so /usr/local/cuda-10.2/targets/aarch64-linux/lib/libcudadevrt.so
-# RUN nvcc --version
 RUN cd /tmp && \
     git clone --recursive --single-branch --branch v${ONNXRUNTIME_VERSION} https://github.com/Microsoft/onnxruntime
 
-# RUN ln -s /usr/local/cuda/lib64/libcudadevrt.a /usr/local/cuda-10.2/targets/aarch64-linux/lib/stubs/libcudadevrt.a
-# RUN ln -s /usr/local/cuda/lib64/libcudart_static.a /usr/local/cuda-10.2/targets/aarch64-linux/lib/stubs/libcudart_static.a
-# RUN ln -s /usr/local/cuda/lib64/libcudart_static.a /usr/local/cuda-10.2/targets/aarch64-linux/lib/libcudart_static.a
-# RUN ln -s /usr/local/cuda/lib64/libcudadevrt.a /usr/local/cuda-10.2/targets/aarch64-linux/lib/libcudadevrt.a
-#ENV LIBRARY_PATH $LIBRARY_PATH:/usr/local/cuda/lib64/stubs
 RUN cd /tmp/onnxruntime && \
     ./build.sh \
         --use_cuda \
@@ -190,9 +177,11 @@ RUN cd /tmp/onnxruntime && \
         --parallel ${NUM_JOBS} \
         --cmake_extra_defines ONNXRUNTIME_VERSION=${ONNXRUNTIME_VERSION} CMAKE_CUDA_ARCHITECTURES=53 && \
     cd build/Linux/RelWithDebInfo && \
-    make install && \
-    python3 -m pip install dist/*.whl
+    make install
 RUN rm -rf /tmp/*
+# This doesn't build the .whl for some reason so install prebuilt
+RUN python3 -m pip install ${WHEEL_FILE}
+
 
 ENTRYPOINT ["/ros_entrypoint.sh"]
 CMD ["bash"]
