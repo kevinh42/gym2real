@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <assert.h>
 #include <time.h>
+#include <pthread.h>
+#include <sched.h>
 
 struct OnnxInference
 {
@@ -73,6 +75,18 @@ int main(int argc, char **argv)
     timespec time1, time2;
     long long diff;
     
+    int ret;
+    pthread_t this_thread = pthread_self();
+    struct sched_param params;
+    params.sched_priority = sched_get_priority_max(SCHED_FIFO);
+    std::cout << "Set realtime priority = " << params.sched_priority << std::endl;
+    ret = pthread_setschedparam(this_thread, SCHED_FIFO, &params);
+    if (ret != 0) {
+        std::cout << "Failed" << std::endl;
+        return 0;     
+    }
+    // Print thread scheduling priority
+    std::cout << "Thread priority is " << params.sched_priority << std::endl; 
     while (1)
     {
         i++;
@@ -92,7 +106,7 @@ int main(int argc, char **argv)
         clock_gettime(CLOCK_MONOTONIC, &time2);
 
         diff = 1e9*(time2.tv_sec-time1.tv_sec) + (time2.tv_nsec-time1.tv_nsec);
-        std::cout << "Inference Time (us): " << diff/1000<<std::endl;
+        if (diff>100000) std::cout << "Inference Time (us): " << diff/1000<<std::endl;
         // /* the size (in bytes) of shared memory object */
         // const int SIZE = 2048;
 
