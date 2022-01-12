@@ -78,7 +78,7 @@ int main(int argc, char **argv)
     int ret;
     pthread_t this_thread = pthread_self();
     struct sched_param params;
-    params.sched_priority = sched_get_priority_max(SCHED_FIFO);
+    params.sched_priority = 80;
     std::cout << "Set realtime priority = " << params.sched_priority << std::endl;
     ret = pthread_setschedparam(this_thread, SCHED_FIFO, &params);
     if (ret != 0) {
