@@ -1,7 +1,21 @@
 stores:
   critical:
-    controller_input: 92
-    controller_output: 36
+    observations: 16
+    actions: 4
 
   general:
     TEST: 512
+
+controllers:
+  - Quadcopter:
+      model: Quadcopter.pth.onnx
+      observations: 84
+      actions: 48
+  - Cartpole:
+      model: Cartpole.pth.onnx
+      observations: 16
+      actions: 4
+  - Twip:
+      model: Twip.pth.onnx
+      observations: 7
+      actions: 2

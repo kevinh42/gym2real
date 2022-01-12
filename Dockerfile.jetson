@@ -35,6 +35,7 @@ RUN apt update && \
         gnupg2 \
         lsb-release \
 	    libopenblas-dev \
+	    libnuma-dev \
         libpython3.6-dev \
         python3-pip \
         python3-dev \

@@ -7,6 +7,7 @@
 #include <memory_manager.h>
 #include <stdio.h>
 #include <assert.h>
+#include <time.h>
 
 struct OnnxInference
 {
@@ -16,8 +17,8 @@ struct OnnxInference
 
         size_t input_size;
         size_t output_size;
-        store.create_critical_buffer("controller_input", 0, input_buffer_, input_size);
-        store.create_critical_buffer("controller_output", 1, output_buffer_, output_size);
+        store.create_critical_buffer("observations", 0, input_buffer_, input_size);
+        store.create_critical_buffer("actions", 1, output_buffer_, output_size);
 
         input_tensor_ = Ort::Value::CreateTensor<float>(memory_info, input_buffer_, input_size, input_shape_.data(), input_shape_.size());
         output_tensor_ = Ort::Value::CreateTensor<float>(memory_info, output_buffer_, output_size, output_shape_.data(), output_shape_.size());
@@ -25,8 +26,8 @@ struct OnnxInference
 
     int Run()
     {
-        const char *input_names[] = {"input"};
-        const char *output_names[] = {"output"};
+        const char *input_names[] = {"observations"};
+        const char *output_names[] = {"actions"};
 
         session_.Run(opt_, input_names, &input_tensor_, 1, output_names, &output_tensor_, 1);
 
@@ -38,14 +39,14 @@ private:
     float *output_buffer_ = nullptr;
 
     Ort::Env env_;
-    Ort::Session session_{env_, "actor.onnx", Ort::SessionOptions{nullptr}};
+    Ort::Session session_{env_, "Cartpole.pth.onnx", Ort::SessionOptions{nullptr}};
     Ort::RunOptions opt_{nullptr};
 
     Ort::Value input_tensor_{nullptr};
-    std::array<int64_t, 1> input_shape_{23};
+    std::array<int64_t, 2> input_shape_{1,4};
 
     Ort::Value output_tensor_{nullptr};
-    std::array<int64_t, 1> output_shape_{9};
+    std::array<int64_t, 2> output_shape_{1,1};
 };
 
 int main(int argc, char **argv)
@@ -57,33 +58,41 @@ int main(int argc, char **argv)
 
     size_t input_size;
     float *input_buffer;
-    if (-1 == m.create_critical_buffer("controller_input", 1, input_buffer, input_size))
+    if (-1 == m.create_critical_buffer("observations", 1, input_buffer, input_size))
     {
-        errExit("controller_input");
+        errExit("observations");
     };
 
     size_t output_size;
     float *output_buffer;
-    if (-1 == m.create_critical_buffer("controller_output", 0, output_buffer, output_size))
+    if (-1 == m.create_critical_buffer("actions", 0, output_buffer, output_size))
     {
-        errExit("controller_output");
+        errExit("actions");
     };
+
+    timespec time1, time2;
+    long long diff;
+    
     while (1)
     {
         i++;
-
+        
         std::generate(input_buffer, input_buffer + input_size, [&]
                       { return rand() % 255; }); // generate random numbers in the range [0, 255]
+        clock_gettime(CLOCK_MONOTONIC, &time1);
+        inf.Run();
+        //std::cout << inf.Run() << std::endl;
 
-        std::cout << inf.Run() << std::endl;
+        // std::cout << "output: ";
+        // for (int j = 0; j < output_size; j++)
+        // {
+        //     std::cout << output_buffer[j] << ",";
+        // }
+        // std::cout << std::endl;
+        clock_gettime(CLOCK_MONOTONIC, &time2);
 
-        std::cout << "output: ";
-        for (int j = 0; j < output_size; j++)
-        {
-            std::cout << output_buffer[j] << ",";
-        }
-        std::cout << std::endl;
-
+        diff = 1e9*(time2.tv_sec-time1.tv_sec) + (time2.tv_nsec-time1.tv_nsec);
+        std::cout << "Inference Time (us): " << diff/1000<<std::endl;
         // /* the size (in bytes) of shared memory object */
         // const int SIZE = 2048;
 
