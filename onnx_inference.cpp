@@ -45,10 +45,10 @@ private:
     Ort::RunOptions opt_{nullptr};
 
     Ort::Value input_tensor_{nullptr};
-    std::array<int64_t, 2> input_shape_{1,4};
+    std::array<int64_t, 2> input_shape_{1,21};
 
     Ort::Value output_tensor_{nullptr};
-    std::array<int64_t, 2> output_shape_{1,1};
+    std::array<int64_t, 2> output_shape_{1,12};
 };
 
 int main(int argc, char **argv)
