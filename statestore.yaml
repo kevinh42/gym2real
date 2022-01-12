@@ -1,7 +1,7 @@
 stores:
   critical:
-    observations: 16
-    actions: 4
+    observations: 84
+    actions: 48
 
   general:
     TEST: 512

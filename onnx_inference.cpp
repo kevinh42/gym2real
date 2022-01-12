@@ -41,7 +41,7 @@ private:
     float *output_buffer_ = nullptr;
 
     Ort::Env env_;
-    Ort::Session session_{env_, "Cartpole.pth.onnx", Ort::SessionOptions{nullptr}};
+    Ort::Session session_{env_, "Quadcopter.pth.onnx", Ort::SessionOptions{nullptr}};
     Ort::RunOptions opt_{nullptr};
 
     Ort::Value input_tensor_{nullptr};
