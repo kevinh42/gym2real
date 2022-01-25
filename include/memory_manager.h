@@ -1,3 +1,4 @@
+#pragma once
 #define STACK_SIZE 16
 #include <sys/mman.h>
 #include <sys/shm.h>

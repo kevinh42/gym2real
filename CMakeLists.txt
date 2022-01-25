@@ -3,6 +3,7 @@ project(gym2real)
 
 set(ONNXRUNTIME_ROOTDIR "/usr/local/")
 find_package(yaml-cpp REQUIRED)
+find_package(urdfdom REQUIRED)
 
 include_directories()
 include_directories("include"

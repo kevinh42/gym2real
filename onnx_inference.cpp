@@ -11,6 +11,8 @@
 #include <pthread.h>
 #include <sched.h>
 
+#include <controller.h>
+
 struct OnnxInference
 {
     OnnxInference(StateStore &store)
