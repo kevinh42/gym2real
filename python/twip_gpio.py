@@ -101,8 +101,8 @@ class MotorDriver:
                 GPIO.remove_event_detect(self.input_pins['ENCODER_R'])
 
                 # Calculate RPM reading and convert to torque reading
-                rpm_l = self.count_encoder_l/control_loop_time * 60
-                rpm_r = self.count_encoder_r/control_loop_time * 60
+                rpm_l = self.count_encoder_l/control_loop_time * 60 / 16 #encoder should have 16 cpr
+                rpm_r = self.count_encoder_r/control_loop_time * 60 / 16
 
                 torque_l = self.speed_to_torque(rpm_l, self.duty_cycle_l)
                 torque_r = self.speed_to_torque(rpm_r, self.duty_cycle_r)
