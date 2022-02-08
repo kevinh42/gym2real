@@ -42,6 +42,9 @@ class MotorDriverNode(Node):
         self.publish_torque_pid = self.create_publisher(
             JointState, '/twip/effort_pid')
 
+        control_loop_time = 1/250
+        self.create_timer(control_loop_time,self.control_loop)
+
         # Pin setup
         # Board pin-numbering scheme
         GPIO.setmode(GPIO.BOARD)
@@ -75,6 +78,10 @@ class MotorDriverNode(Node):
         self.pwm_motor_r.stop()
         GPIO.cleanup()
 
+    def effort_callback(self, msg):
+        self.torque_target_l = msg.effort[0]
+        self.torque_target_r = msg.effort[1]
+
     def speed_to_torque(self, rpm, duty_cycle):
         # approximation using values taken from motor curve graph
         m = -35000  # speed-torque slope [rpm / N*m]
@@ -96,21 +103,21 @@ class MotorDriverNode(Node):
     def log_r(self, channel):
         self.count_encoder_r += 1
 
-    def effort_callback(self, msg):
+    def control_loop(self):
         # Clear interrupts
         GPIO.remove_event_detect(self.input_pins['ENCODER_L'])
         GPIO.remove_event_detect(self.input_pins['ENCODER_R'])
 
         now = time.time()
         elapsed = now - self.last_time
-
+        pub_msg = JointState()
+        pub_msg.header.stamp = self.get_clock().now().to_msg()
+        pub_msg.header.frame_id = ''
+        pub_msg.effort = [0,0]
+        
         # Read target torque from msg
-        torque_target_l = msg.effort[0]
-        torque_target_r = msg.effort[1]
-        direction_l = 1 if torque_target_l >= 0 else -1
-        direction_r = 1 if torque_target_r >= 0 else -1
-        torque_target_l = abs(torque_target_l)
-        torque_target_r = abs(torque_target_r)
+        direction_l = 1 if self.torque_target_l >= 0 else -1
+        direction_r = 1 if self.torque_target_r >= 0 else -1
 
         # Calculate RPM reading and convert to torque reading
         # encoder should have 16 cpr (maybe 16*26.9 ?)
@@ -120,13 +127,13 @@ class MotorDriverNode(Node):
         torque_l = self.speed_to_torque(rpm_l, self.duty_cycle_l)
         torque_r = self.speed_to_torque(rpm_r, self.duty_cycle_r)
 
-        msg.effort[0] = torque_l
-        msg.effort[1] = torque_r
-        self.publish_torque_measured.publish(msg)
+        pub_msg.effort[0] = torque_l
+        pub_msg.effort[1] = torque_r
+        self.publish_torque_measured.publish(pub_msg)
 
         # PID controller for target torque
-        error_l = torque_target_l - torque_l
-        error_r = torque_target_r - torque_r
+        error_l = abs(self.torque_target_l) - torque_l
+        error_r = abs(self.torque_target_r) - torque_r
 
         rate_error_l = error_l - self.last_error_l
         rate_error_r = error_r - self.last_error_r
@@ -139,9 +146,9 @@ class MotorDriverNode(Node):
             self.sum_error_r+self.Kd_r*rate_error_r
 
         # Publish actual target torque after PID
-        msg.effort[0] = torque_pid_l
-        msg.effort[1] = torque_pid_l
-        self.publish_torque_pid.publish(msg)
+        pub_msg.effort[0] = torque_pid_l
+        pub_msg.effort[1] = torque_pid_l
+        self.publish_torque_pid.publish(pub_msg)
 
         # Calculate duty cycle from desired torque
         # TODO: Use motor constants for calculations (currently uses last rpm reading)
