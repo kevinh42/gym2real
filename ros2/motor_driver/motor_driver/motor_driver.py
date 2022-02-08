@@ -42,9 +42,6 @@ class MotorDriverNode(Node):
         self.publish_torque_pid = self.create_publisher(
             JointState, '/twip/effort_pid')
 
-        control_loop_time = 1/250
-        self.create_timer(control_loop_time,self.control_loop)
-
         # Pin setup
         # Board pin-numbering scheme
         GPIO.setmode(GPIO.BOARD)
@@ -72,6 +69,8 @@ class MotorDriverNode(Node):
             self.input_pins['ENCODER_L'], GPIO.FALLING, callback=self.log_l, bouncetime=10)
         GPIO.add_event_detect(
             self.input_pins['ENCODER_R'], GPIO.FALLING, callback=self.log_r, bouncetime=10)
+        control_loop_time = 1/250
+        self.create_timer(control_loop_time,self.control_loop)
 
     def __del__(self):
         self.pwm_motor_l.stop()
