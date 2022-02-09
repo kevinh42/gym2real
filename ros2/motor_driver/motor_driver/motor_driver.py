@@ -23,6 +23,8 @@ class MotorDriverNode(Node):
 
     pwm_motor_l = None
     pwm_motor_r = None
+    torque_target_l = 0
+    torque_target_r = 0
     count_encoder_l = 0
     count_encoder_r = 0
     duty_cycle_l = 0
@@ -76,7 +78,7 @@ class MotorDriverNode(Node):
         GPIO.add_event_detect(
             self.input_pins['ENCODER_R'], GPIO.FALLING, callback=self.log_r, bouncetime=10)
         control_loop_time = 1/250
-        self.create_timer(control_loop_time,self.control_loop)
+        self.create_timer(control_loop_time, self.control_loop)
 
     def __del__(self):
         if self.pwm_motor_l is not None:
@@ -122,7 +124,7 @@ class MotorDriverNode(Node):
         pub_msg.header.frame_id = ''
         pub_msg.effort.append(0.)
         pub_msg.effort.append(0.)
-        
+
         # Read target torque from msg
         direction_l = 1 if self.torque_target_l >= 0 else -1
         direction_r = 1 if self.torque_target_r >= 0 else -1
