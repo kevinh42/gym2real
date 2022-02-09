@@ -5,12 +5,21 @@ set(ONNXRUNTIME_ROOTDIR "/usr/local/")
 find_package(yaml-cpp REQUIRED)
 find_package(urdfdom REQUIRED)
 
-include_directories()
+include_directories(
+    /usr/include
+)
 include_directories("include"
     "${ONNXRUNTIME_ROOTDIR}/include" 
     "${ONNXRUNTIME_ROOTDIR}/include/onnxruntime/core/session"
     ${YAML_CPP_INCLUDE_DIRS})
 link_directories("${ONNXRUNTIME_ROOTDIR}/lib")
+
+add_library(sensors
+    src/imu.cpp
+)
+target_link_libraries(sensors
+    /usr/lib/i2c.so
+)
 
 
 add_executable(onnx_inference onnx_inference.cpp)
