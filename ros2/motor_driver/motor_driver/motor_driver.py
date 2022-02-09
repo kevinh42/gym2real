@@ -1,4 +1,6 @@
 from tkinter import N
+
+from numpy import array
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
@@ -118,8 +120,8 @@ class MotorDriverNode(Node):
         pub_msg = JointState()
         pub_msg.header.stamp = self.get_clock().now().to_msg()
         pub_msg.header.frame_id = ''
-        pub_msg.effort[0]=0
-        pub_msg.effort[1]=0
+        pub_msg.effort.append(0.)
+        pub_msg.effort.append(0.)
         
         # Read target torque from msg
         direction_l = 1 if self.torque_target_l >= 0 else -1
