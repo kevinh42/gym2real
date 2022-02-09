@@ -15,7 +15,7 @@ class MotorDriverNode(Node):
     }
 
     input_pins = {
-        'ENCODER_L': 10,
+        'ENCODER_L': 11,
         'ENCODER_R': 13,
     }
 
@@ -118,7 +118,8 @@ class MotorDriverNode(Node):
         pub_msg = JointState()
         pub_msg.header.stamp = self.get_clock().now().to_msg()
         pub_msg.header.frame_id = ''
-        pub_msg.effort = [0,0]
+        pub_msg.effort[0]=0
+        pub_msg.effort[1]=0
         
         # Read target torque from msg
         direction_l = 1 if self.torque_target_l >= 0 else -1
