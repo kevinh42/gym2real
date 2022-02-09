@@ -1,3 +1,5 @@
+from tkinter import N
+import rclpy
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import JointState
@@ -17,6 +19,8 @@ class MotorDriverNode(Node):
         'ENCODER_R': 13,
     }
 
+    pwm_motor_l = None
+    pwm_motor_r = None
     count_encoder_l = 0
     count_encoder_r = 0
     duty_cycle_l = 0
@@ -38,9 +42,9 @@ class MotorDriverNode(Node):
         self.subscribe_torque = self.create_subscription(
             JointState, '/twip/effort_command', self.effort_callback, qos_profile_sensor_data)
         self.publish_torque_measured = self.create_publisher(
-            JointState, '/twip/effort_measured')
+            JointState, '/twip/effort_measured', qos_profile_sensor_data)
         self.publish_torque_pid = self.create_publisher(
-            JointState, '/twip/effort_pid')
+            JointState, '/twip/effort_pid', qos_profile_sensor_data)
 
         # Pin setup
         # Board pin-numbering scheme
@@ -73,8 +77,10 @@ class MotorDriverNode(Node):
         self.create_timer(control_loop_time,self.control_loop)
 
     def __del__(self):
-        self.pwm_motor_l.stop()
-        self.pwm_motor_r.stop()
+        if self.pwm_motor_l is not None:
+            self.pwm_motor_l.stop()
+        if self.pwm_motor_r is not None:
+            self.pwm_motor_r.stop()
         GPIO.cleanup()
 
     def effort_callback(self, msg):
@@ -190,7 +196,15 @@ class MotorDriverNode(Node):
 
 
 def main(args=None):
-    pass
+    rclpy.init(args=args)
+    m = MotorDriverNode()
+    rclpy.spin(m)
+
+    # Destroy the node explicitly
+    # (optional - otherwise it will be done automatically
+    # when the garbage collector destroys the node object)
+    m.destroy_node()
+    rclpy.shutdown()
 
 
 if __name__ == '__main__':
