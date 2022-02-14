@@ -72,21 +72,53 @@ static const std::map<int, std::string> i2c_scl_map = {
 };
 
 struct Data {
-    double x;
-    double y;
-    double z;
+    int _x;
+    int _y;
+    int _z;
+
+    double scale;
+
+    Data()
+        : _x(0), _y(0), _z(0), scale(1.0)
+    {}
+
+    double x() { return (double) _x * scale; }
+    double y() { return (double) _y * scale; }
+    double z() { return (double) _z * scale; }
 };
 
 struct DataIMU {
     Data accel;
     Data gyro;
-    double temp;
+    int _temp;
+
+    DataIMU()
+        : _temp(0)
+    {}
+
+    double temp() { return ((double) _temp / 340.0) + 36.53; }
 };
 
 class IMU
 {
 public:
-    IMU();
+    enum GyroRange { 
+        DEG250 = GYRO_RANGE_250DEG,
+        DEG500 = GYRO_RANGE_500DEG,
+        DEG1000 = GYRO_RANGE_1000DEG,
+        DEG2000 = GYRO_RANGE_2000DEG
+    };
+
+    enum AccelRange {
+        G2 = ACCEL_RANGE_2G,
+        G4 = ACCEL_RANGE_4G,
+        G8 = ACCEL_RANGE_8G,
+        G16 = ACCEL_RANGE_16G
+    };
+
+    IMU(int address);
+
+    ~IMU();
     
     /**
      * @brief Initialize the IMU
@@ -99,38 +131,83 @@ public:
     /**
      * @brief Retrieve data from the IMU
      * 
-     * @return Data
+     * @param data DataIMU object
      */
-    DataIMU read();
+    void getData(DataIMU* data);
+    /**
+     * @brief Get latest data from the gyroscope
+     * 
+     * @param data Data object
+     */
+    void getGyroData(Data* data);
+    /**
+     * @brief Get latest data from the accelerometer
+     * 
+     * @param data Data object
+     * @param g Return multiple of acceleration due to gravity
+     */
+    void getAccelData(Data* data, bool g = false);
+    /**
+     * @brief Get latest data from the thermometer
+     * 
+     * @param data double value
+     */
+    void getTempData(int* data);
+
+    /**
+     * @brief Set the range of the accelerometer
+     * 
+     * @param range Pre-defined range
+     */
+    void setAccelRange(AccelRange range);
+    /**
+     * @brief Set the range of the gyroscope
+     * 
+     * @param range Pre-defined range
+     */
+    void setGyroRange(GyroRange range);
+
+    /**
+     * @brief Get the range of the accelerometer
+     * 
+     * @param raw Return raw data
+     */
+    int getAccelRange(bool raw = false);
+    /**
+     * @brief Get the range of the gyroscope
+     * 
+     * @param raw Return raw data
+     */
+    int getGyroRange(bool raw = false);
 
 private:
     /**
      * @brief Read one byte of data
      * 
-     * @return uint8_t
+     * @param data uint8_t pointer
      */
-    uint8_t readByte(int address);
+    bool readByte(int address, int* data);
 
     /**
      * @brief Read two bytes of data
      * 
-     * @return uint16_t
+     * @param data uint16_t pointer
      */
-    uint16_t readWord(int address);
+    bool readWord(int address, int* data);
 
     /**
-     * @brief Get latest data from the gyroscope
+     * @brief Write to IMU register
      * 
-     * @return Data
+     * @param address write address
+     * @param value int value
      */
-    Data getGyroData();
+    bool writeByte(int address, int value);
 
-    /**
-     * @brief Get latest data from the accelerometer
-     * 
-     * @return Data
-     */
-    Data getAccelData();
+    bool initialized_;
+    int address_;
+    int bus_;
+
+    I2CDevice device_;
 };
 
 #endif
