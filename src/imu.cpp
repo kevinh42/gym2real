@@ -1,6 +1,7 @@
 #include "imu.h"
 #include <sstream>
 #include <iostream>
+#include <string.h>
 
 IMU::IMU(int address)
     : initialized_(false)
@@ -229,6 +230,7 @@ void IMU::getTempData(int* data)
 
 void IMU::getData(DataIMU* data)
 {
+    memset(data, 0, sizeof(DataIMU));
     getAccelData(&data->accel);
     getGyroData(&data->gyro);
     getTempData(&data->_temp);
