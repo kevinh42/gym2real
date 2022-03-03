@@ -13,6 +13,13 @@ IMU::~IMU()
     i2c_close(bus_);
 }
 
+void IMU::checkInitialized()
+{
+    if (!initialized_) {
+        throw std::runtime_error("The IMU has not been initialized.");
+    }
+}
+
 bool IMU::writeByte(int address, int value)
 {
     unsigned char buf[1];
@@ -62,7 +69,6 @@ bool IMU::readWord(int address, int* data)
 
 bool IMU::init(int sda_pin, int scl_pin)
 {
-    std::stringstream ss;
     std::string sda_bus_name = i2c_sda_map.at(sda_pin);
     std::string scl_bus_name = i2c_scl_map.at(scl_pin);
 
@@ -91,8 +97,18 @@ bool IMU::init(int sda_pin, int scl_pin)
     return true;
 }
 
+void IMU::configure(int address, int value)
+{
+    checkInitialized();
+
+    // Write value to address
+    writeByte(address, value);
+}
+
 void IMU::setAccelRange(AccelRange range)
 {
+    checkInitialized();
+
     // Reset accelerometer config
     writeByte(ACCEL_CONFIG, 0x00);
 
@@ -102,6 +118,8 @@ void IMU::setAccelRange(AccelRange range)
 
 void IMU::setGyroRange(GyroRange range)
 {
+    checkInitialized();
+
     // Reset gyroscope config
     writeByte(GYRO_CONFIG, 0x00);
 
@@ -111,6 +129,8 @@ void IMU::setGyroRange(GyroRange range)
 
 int IMU::getAccelRange(bool raw)
 {
+    checkInitialized();
+
     int raw_val;
     readByte(ACCEL_CONFIG, &raw_val);
 
@@ -135,6 +155,8 @@ int IMU::getAccelRange(bool raw)
 
 int IMU::getGyroRange(bool raw)
 {
+    checkInitialized();
+
     int raw_val;
     readByte(GYRO_CONFIG, &raw_val);
 
@@ -159,6 +181,8 @@ int IMU::getGyroRange(bool raw)
 
 void IMU::getGyroData(Data* data)
 {
+    checkInitialized();
+
     readWord(GYRO_XOUT0, &data->_x);
     readWord(GYRO_YOUT0, &data->_y);
     readWord(GYRO_ZOUT0, &data->_z);
@@ -190,6 +214,8 @@ void IMU::getGyroData(Data* data)
 
 void IMU::getAccelData(Data* data, bool g)
 {
+    checkInitialized();
+
     readWord(ACCEL_XOUT0, &data->_x);
     readWord(ACCEL_YOUT0, &data->_y);
     readWord(ACCEL_ZOUT0, &data->_z);
@@ -225,11 +251,15 @@ void IMU::getAccelData(Data* data, bool g)
 
 void IMU::getTempData(int* data)
 {
+    checkInitialized();
+
     readWord(TEMP_OUT0, data);
 }
 
 void IMU::getData(DataIMU* data)
 {
+    checkInitialized();
+
     memset(data, 0, sizeof(DataIMU));
     getAccelData(&data->accel);
     getGyroData(&data->gyro);

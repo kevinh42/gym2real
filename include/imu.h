@@ -129,6 +129,14 @@ public:
     bool init(int sda_pin = 3, int scl_pin = 5);
 
     /**
+     * @brief Configure a register on the IMU
+     * 
+     * @param address The register address
+     * @param value The configured value
+     */
+    void configure(int address, int value);
+
+    /**
      * @brief Retrieve data from the IMU
      * 
      * @param data DataIMU object
@@ -202,6 +210,8 @@ private:
      * @param value int value
      */
     bool writeByte(int address, int value);
+
+    void checkInitialized();
 
     bool initialized_;
     int address_;
