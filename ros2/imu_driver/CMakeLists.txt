@@ -22,26 +22,43 @@ find_package(sensor_msgs REQUIRED)
 find_package(JetsonGPIO REQUIRED)
 find_package(Boost REQUIRED)
 
+# IMU library
+add_library(sensors
+    src/imu.cpp
+)
+target_link_libraries(sensors
+    /usr/lib/libi2c.a
+)
+
+# add_executable(test_imu test/test_imu.cpp)
+# target_link_libraries(test_imu
+#     sensors
+# )
+
+# IMU driver
+add_executable(imu_driver src/imu_driver.cpp)
+
+target_include_directories(imu_driver PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+
+target_link_libraries(imu_driver
+  JetsonGPIO::JetsonGPIO
+  sensors
+  /usr/lib/libi2c.a
+  ${BOOST_LIBRARIES}
+)
+install(TARGETS imu_driver
+  DESTINATION lib/${PROJECT_NAME})
+
 include_directories(
   include
-  /root/code/gym2real/include
   /usr/include
   ${BOOST_INCLUDE_DIRS}
 )
 
-add_executable(imu_driver src/imu_driver.cpp)
-target_link_libraries(imu_driver
-  JetsonGPIO::JetsonGPIO
-  /root/code/gym2real/build/libsensors.a
-  /usr/lib/libi2c.a
-  ${BOOST_LIBRARIES}
-)
 ament_target_dependencies(imu_driver rclcpp sensor_msgs)
-
-install(TARGETS
-  imu_driver
-  DESTINATION lib/${PROJECT_NAME}
-)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

@@ -1,7 +1,7 @@
 #include <imu_driver/imu_driver.h>
 
 #include <JetsonGPIO.h>
-#include <imu.h>
+#include <imu_driver/imu.h>
 
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
