@@ -17,17 +17,23 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(JetsonGPIO REQUIRED)
 
 add_executable(motor_driver src/motor_driver.cpp)
 target_include_directories(motor_driver PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 
+target_link_libraries(motor_driver
+  JetsonGPIO::JetsonGPIO
+)
+
 install(TARGETS motor_driver
   DESTINATION lib/${PROJECT_NAME})
+
+ament_target_dependencies(motor_driver rclcpp sensor_msgs)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
