@@ -17,6 +17,7 @@ ACCEL_ZOUT_H = 0x3F
 GYRO_XOUT_H  = 0x43
 GYRO_YOUT_H  = 0x45
 GYRO_ZOUT_H  = 0x47
+INT_STATUS   = 0x3A
 
 def MPU_Init():
     # write to sample rate register
@@ -32,7 +33,8 @@ def MPU_Init():
     bus.write_byte_data(device_address, GYRO_CONFIG, 24)
 
     # write to interrupt enable register
-    bus.write_byte_data(device_address, INT_ENABLE, 1)
+    #bus.write_byte_data(device_address, INT_ENABLE, 1)
+    bus.write_byte_data(device_address, INT_ENABLE, 0)
 
 def read_raw_data(addr):
     # accelero and gyro values are 16-bit
@@ -53,9 +55,11 @@ device_address = 0x68
 
 MPU_Init() # initialize the IMU
 
-
 # Read IMU values and return Ax,Ay,Az,Gx,Gy,Gz
 def get_reading():
+    # while  bus.read_byte_data(device_address, INT_STATUS):
+    #     continue
+
     # read accelerometer raw value
     acc_x = read_raw_data(ACCEL_XOUT_H)
     acc_y = read_raw_data(ACCEL_YOUT_H)
@@ -86,12 +90,13 @@ def calc_mean_var(n_samples: int):
     print(f"Variance:{variance}")
 
 # get phi dt seconds after previous reading
-def get_phi(dt = 1e-3, prev_phi=0, alpha=0.98):
+def get_phi(dt = 1e-3, prev_phi=0, alpha=0.97):
     Ax, Ay, Az, Gx, Gy, Gz = get_reading()
     raw_pitch = np.arctan2(Ax, np.sqrt(Ay**2 + Az**2)) # radians, very noisy
     gyro_pitch = Gx*dt * np.pi/180  + prev_phi # integrate gyro reading
     comp_pitch = raw_pitch * (1-alpha) + alpha * gyro_pitch # angle fusion with complementray filter
     return comp_pitch
+    #return raw_pitch
 
 
 if __name__ == "__main__":
@@ -108,9 +113,11 @@ if __name__ == "__main__":
     phi0 = 0
     sample_period = 1/(args.sample_rate)
     phi = get_phi(0, phi0)
+    t0 = time.time()
     while(True):
-        t0 = time.time()
         time.sleep(sample_period)
         dt = time.time() - t0
         phi = get_phi(dt, phi)
+        t0 = time.time()
         print(f"phi (degrees): {phi * 180/(np.pi)}")
+        print("time: ", dt, " s")

@@ -2,16 +2,19 @@
 import RPi.GPIO as GPIO
 import time
 from imu import get_phi
+import matplotlib.pyplot as plt
+from collections import deque
 
 PI = 3.1415926535897932
 
 class MotorDriver(object):
-    def __init__(self, diameter=125, gear_ratio=26.9, counts_per_rev=64.0, phi0=0, config_file='pid.conf'):
+    def __init__(self, diameter=125, gear_ratio=26.9, counts_per_rev=16.0, phi0=0, config_file='pid.conf', config_line=-1):
         self.wheel_circum = diameter * PI # mm
         self.gear_ratio = gear_ratio
         self.cpr = counts_per_rev
         self.phi0 = phi0 # radians
         self.config = config_file
+        self.config_line = config_line
 
 
     output_pins = {
@@ -41,10 +44,11 @@ class MotorDriver(object):
         last_error = 0
         sum_error = 0
         prev_Kd_term = 0
+        Kp_term = Ki_term = Kd_term = 0
         last_time = time.time()
         out = 0
         while True:
-            error = yield out
+            error = yield out, Kp_term, Ki_term, Kd_term
             now = time.time()
             elapsed = now-last_time
             rate_error = (error-last_error)
@@ -80,7 +84,8 @@ class MotorDriver(object):
         pwm_motor_r.start(self.duty_cycle_r)
 
 
-        inital_config = read_config()
+        inital_config = read_config(line=self.config_line)
+        print(inital_config)
         Kp_pos, Ki_pos, Kd_pos = inital_config[0:3] # first 3
         Kp_phi, Ki_phi, Kd_phi = inital_config[3:6] # next 3
         Kp_steer, Ki_steer, Kd_steer = inital_config[6:9] # last 3
@@ -101,13 +106,20 @@ class MotorDriver(object):
         pwm_motor_l.ChangeDutyCycle(50)
         pwm_motor_r.ChangeDutyCycle(50)
 
+        _phi_cache = deque()
+        _kp_cache = deque()
+        _ki_cache = deque()
+        _kd_cache = deque()
+
         while True:
             ready = input("Ready to start? (y|n)")
             if ready == 'y':
                 break
-
+            
+        last_time = time.time()
         print("Control running. Press CTRL+C to exit.")
         try:
+            t0 = time.time()
             while True:
                 # Set up interrupts
                 self.count_encoder_l = 0
@@ -129,7 +141,18 @@ class MotorDriver(object):
                 pos_r = self.count_encoder_r * self.wheel_circum / self.gear_ratio / self.cpr # encoder count * circumfrence / gearing / CPR
                 pos = (pos_l + pos_r) / 2
                 # calculate angle in radians
-                phi = get_phi(control_loop_time, phi)
+                #phi = get_phi(control_loop_time, phi)
+                dt = time.time()-t0
+                print("Loop", dt," s")
+                phi = get_phi(dt, phi)
+                t0 = time.time()
+
+                # _phi_cache.append(phi)
+                # if len(_phi_cache) > 2000:
+                #     _phi_cache.popleft() 
+                    # _kp_cache.popleft()
+                    # _ki_cache.popleft()
+                    # _kd_cache.popleft()             
 
                 # calculate steering direction in mm
                 steer_dir = (pos_r - pos_l)
@@ -164,6 +187,13 @@ class MotorDriver(object):
                     pwm_motor_r.ChangeDutyCycle(50)
                     stop_balance = False
                     while True:
+                        plt.figure(0)
+                        plt.plot(_phi_cache)
+                        plt.plot(_kp_cache)
+                        plt.plot(_ki_cache)
+                        plt.plot(_kd_cache)
+                        plt.legend(('phi','kp','ki','kd'))
+                        plt.show()
                         restart = input("restart? (y|n)")
                         if restart == 'y':
                             print("Restarting!")
@@ -177,9 +207,20 @@ class MotorDriver(object):
                         continue
 
 
-                pos_action = pid_pos.send(pos_error)
-                phi_action = pid_phi.send(phi_error)
-                steer_action = pid_steer.send(steer_error)
+                pos_action, _, _, _ = pid_pos.send(pos_error)
+                phi_action, Kp_term, Ki_term, Kd_term = pid_phi.send(phi_error)
+
+                _kp_cache.append(Kp_term)
+                _ki_cache.append(Ki_term)
+                _kd_cache.append(Kd_term)
+                _phi_cache.append(phi)
+                if len(_phi_cache) > 2000:
+                    _phi_cache.popleft() 
+                    _kp_cache.popleft()
+                    _ki_cache.popleft()
+                    _kd_cache.popleft()   
+
+                steer_action,_,_,_ = pid_steer.send(steer_error)
 
                 motor_action_l = pos_action + phi_action - steer_action
                 motor_action_r = pos_action + phi_action + steer_action
@@ -210,10 +251,10 @@ def main():
     m = MotorDriver()
     m.run()
 
-def read_config(file = 'pid.conf'):
+def read_config(file = 'pid.conf', line=-1):
     with open (file, 'r') as f:
         lines = f.read().splitlines()
-        last_line = [float(x) for x in lines[-1].split(',')]
+        last_line = [float(x) for x in lines[line].split(',')]
         return last_line
 
 
