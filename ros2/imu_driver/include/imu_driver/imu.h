@@ -36,6 +36,7 @@
 #define GYRO_CONFIG  0x1B
 #define ACCEL_CONFIG 0x1C
 #define INT_ENABLE   0x38
+#define I2C_MST_CTRL 0x24
 
 // Pre-defined ranges
 #define ACCEL_RANGE_2G     0x00

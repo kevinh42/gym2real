@@ -36,14 +36,17 @@ bool IMU::writeByte(int address, int value)
 
 bool IMU::readByte(int address, int* data)
 {
+    std::cout<<"Read byte start"<<std::endl;
     size_t byte_size = sizeof(uint8_t);
     size_t read_size;
     if ((read_size = i2c_read(&device_, address, data, byte_size)) == -1) {
+        std::cout<<"Read byte false"<<std::endl;
         return false;
     } else if (read_size != byte_size) {
+        std::cout<<"Read byte false2"<<std::endl;
         return false;
     }
-
+    std::cout<<"Read byte true"<<std::endl;
     return true;
 }
 
@@ -93,6 +96,21 @@ bool IMU::init(int sda_pin, int scl_pin)
     } else {
         initialized_ = true;
     }
+
+    if (!writeByte(SMPLRT_DIV, 0x07)) {
+        printf("Failed to change sample rate\n");
+        return false;
+    } 
+
+    if (!writeByte(GYRO_CONFIG, 24)) {
+        printf("Failed to change configure gyro\n");
+        return false;
+    } 
+
+    if (!writeByte(I2C_MST_CTRL, 16 | 13)) {
+        printf("Failed to change configure i2c frequency\n");
+        return false;
+    } 
 
     return true;
 }

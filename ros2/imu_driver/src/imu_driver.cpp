@@ -45,7 +45,7 @@ IMUDriver::IMUDriver(int interrupt_pin, int sda_pin, int scl_pin, int address)
 
     GPIO::setmode(GPIO::BOARD);
     GPIO::setup(interrupt_pin, GPIO::IN);
-    GPIO::add_event_detect(interrupt_pin, GPIO::RISING, *cb_);
+    GPIO::add_event_detect(interrupt_pin, GPIO::RISING, *cb_, 100);
 }
 
 IMUDriver::~IMUDriver()
@@ -72,7 +72,7 @@ void IMUDriver::data_callback(const std::string& channel)
 int main (int argc, char **argv)
 {
     rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<IMUDriver>(15, 3, 5, 0x68));
+    rclcpp::spin(std::make_shared<IMUDriver>(19, 3, 5, 0x68));
     rclcpp::shutdown();
     return 0;
 }
