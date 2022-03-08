@@ -22,4 +22,5 @@ private:
     
     DataIMU* data_;
     Callback* cb_;
+    int interrupt_pin_;
 };

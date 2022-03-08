@@ -3,6 +3,8 @@
 #include <iostream>
 #include <string.h>
 
+#include <endian.h>
+
 IMU::IMU(int address)
     : initialized_(false)
     , address_(address)
@@ -36,7 +38,7 @@ bool IMU::writeByte(int address, int value)
 
 bool IMU::readByte(int address, int* data)
 {
-    std::cout<<"Read byte start"<<std::endl;
+    //std::cout<<"Read byte start"<<std::endl;
     size_t byte_size = sizeof(uint8_t);
     size_t read_size;
     if ((read_size = i2c_read(&device_, address, data, byte_size)) == -1) {
@@ -46,7 +48,7 @@ bool IMU::readByte(int address, int* data)
         std::cout<<"Read byte false2"<<std::endl;
         return false;
     }
-    std::cout<<"Read byte true"<<std::endl;
+    //std::cout<<"Read byte true"<<std::endl;
     return true;
 }
 
@@ -102,15 +104,6 @@ bool IMU::init(int sda_pin, int scl_pin)
         return false;
     } 
 
-    if (!writeByte(GYRO_CONFIG, 24)) {
-        printf("Failed to change configure gyro\n");
-        return false;
-    } 
-
-    if (!writeByte(I2C_MST_CTRL, 16 | 13)) {
-        printf("Failed to change configure i2c frequency\n");
-        return false;
-    } 
 
     return true;
 }
@@ -195,6 +188,12 @@ int IMU::getGyroRange(bool raw)
     }
 
     return -1;
+}
+
+int IMU::getInterruptStatus(){
+    int raw_val;
+    readByte(INT_STATUS, &raw_val);
+    return raw_val;
 }
 
 void IMU::getGyroData(Data* data)
@@ -282,4 +281,54 @@ void IMU::getData(DataIMU* data)
     getAccelData(&data->accel);
     getGyroData(&data->gyro);
     getTempData(&data->_temp);
+}
+
+void IMU::getDataFast(DataIMU* data)
+{
+    // should modify this to clean it up
+    // uses a single read to access all the measurements at once
+    checkInitialized();
+    memset(data, 0, sizeof(DataIMU));
+
+    int16_t packed_data[7];
+    
+    size_t data_size = sizeof(packed_data); // read all 6 * 2 bytes of data at once
+    size_t read_size;
+    if ((read_size = i2c_read(&device_, ACCEL_XOUT0, &packed_data, data_size)) == -1) {
+        std::cout<<"Failed read fast 1"<<std::endl;
+    } else if (read_size != data_size) {
+        std::cout<<"Failed read fast 2"<<std::endl;
+    }
+    else{
+        for (int i = 0; i < 7; i++)
+        {
+            packed_data[i] = (int16_t) be16toh((uint16_t) packed_data[i]); // convert big endian to host type, this also handles overflows for negative values
+        }
+
+        // read accel address
+        data->accel._x = packed_data[0];
+        data->accel._y = packed_data[1];
+        data->accel._z = packed_data[2];
+        data->accel.scale = 1.0 / ACCEL_SCALE_MODIFIER_2G;
+
+        // read temp address
+        data->_temp = packed_data[3];
+
+        // read gyro address
+        data->gyro._x = packed_data[4];
+        data->gyro._y = packed_data[5];
+        data->gyro._z = packed_data[6];
+        data->gyro.scale = 1.0 / GYRO_SCALE_MODIFIER_250DEG;
+        
+
+        std::cout<<
+        "Accel x: " << data->accel.x() <<
+        ", Accel y: " << data->accel.y() <<
+        ", Accel z: " << data->accel.z() <<
+        ", Gyro x: " << data->accel.x() <<
+        ", Gyro y: " << data->gyro.y() <<
+        ", Gryo z: " << data->gyro.z() <<
+        ", temp: " << data->temp() << std::endl;
+    }
+
 }

@@ -36,6 +36,8 @@
 #define GYRO_CONFIG  0x1B
 #define ACCEL_CONFIG 0x1C
 #define INT_ENABLE   0x38
+#define INT_STATUS   0x3A
+#define INT_PIN_CFG  0x37
 #define I2C_MST_CTRL 0x24
 
 // Pre-defined ranges
@@ -143,11 +145,19 @@ public:
      * @param data DataIMU object
      */
     void getData(DataIMU* data);
+
+    /**
+     * @brief Retrieve data from the IMU with a single read
+     * 
+     * @param data DataIMU object
+     */
+    void getDataFast(DataIMU* data);
     /**
      * @brief Get latest data from the gyroscope
      * 
      * @param data Data object
      */
+    
     void getGyroData(Data* data);
     /**
      * @brief Get latest data from the accelerometer
@@ -188,6 +198,11 @@ public:
      * @param raw Return raw data
      */
     int getGyroRange(bool raw = false);
+
+    /**
+     * @brief Get the interrupt status
+     */
+    int getInterruptStatus();
 
 private:
     /**
