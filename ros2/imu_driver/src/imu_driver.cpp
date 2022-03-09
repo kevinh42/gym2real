@@ -37,15 +37,22 @@ IMUDriver::IMUDriver(int interrupt_pin, int sda_pin, int scl_pin, int address)
     : Node("imu_driver")
     , imu_(new IMU(address))
     , data_(new DataIMU())
+    , interrupt_pin_(interrupt_pin)
 {
     publisher_ = create_publisher<sensor_msgs::msg::Imu>("imu_data", 10);
     cb_ = new Callback(boost::bind(&IMUDriver::data_callback, this, _1), "data_callback");
     imu_->init(sda_pin, scl_pin);
-    imu_->configure(INT_ENABLE, 0x01);
+    imu_->configure(INT_ENABLE, 0x01); // enable data interrupt
+    imu_->configure(SMPLRT_DIV, 0x07); // set 1kHz sample rate on GYRO
+    imu_->configure(INT_PIN_CFG, 0x00); // set interrupt to not clear until status is read
+    imu_->setGyroRange(IMU::GyroRange::DEG250);
+    imu_->setAccelRange(IMU::AccelRange::G2);
 
     GPIO::setmode(GPIO::BOARD);
-    GPIO::setup(interrupt_pin, GPIO::IN);
-    GPIO::add_event_detect(interrupt_pin, GPIO::RISING, *cb_, 100);
+    GPIO::setup(interrupt_pin_, GPIO::IN);
+    GPIO::add_event_detect(interrupt_pin_, GPIO::RISING, *cb_);
+    // read status to clear interrupt
+    //imu_->getInterruptStatus();
 }
 
 IMUDriver::~IMUDriver()
@@ -56,7 +63,9 @@ IMUDriver::~IMUDriver()
 
 void IMUDriver::data_callback(const std::string& channel)
 {
-    imu_->getData(data_);
+    imu_->getDataFast(data_);
+    // read status to clear interrupt
+    //imu_->getInterruptStatus();
 
     sensor_msgs::msg::Imu msg;
     msg.angular_velocity.x = data_->gyro.x();

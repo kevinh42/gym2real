@@ -35,7 +35,7 @@ MotorDriver::MotorDriver(int pwm_motor_l, int pwm_motor_r, int encoder_l_a, int 
   command_->velocity[1] = 0;
 
   // Set up event detection for encoders
-  auto control_loop_time = 5ms;
+  auto control_loop_time = 10ms;
 
   cb_l_a_ = std::make_unique<MotorDriver::CounterCallback>(encoder_l_pin_a_, false, encoder_l_count_, read_a_l_, read_b_l_);
   cb_l_b_ = std::make_unique<MotorDriver::CounterCallback>(encoder_l_pin_b_, true, encoder_l_count_, read_a_l_, read_b_l_);
@@ -119,8 +119,8 @@ void MotorDriver::control_loop()
   auto now = std::chrono::high_resolution_clock::now();
   float dt = std::chrono::duration_cast<std::chrono::microseconds>(now - last_time_).count() / 1e6;
 
-  RCLCPP_INFO(get_logger(), "R" + std::to_string(encoder_r_count_));
-  RCLCPP_INFO(get_logger(), "L" + std::to_string(encoder_l_count_));
+  RCLCPP_INFO(get_logger(),"R: "+std::to_string(encoder_r_count_));
+  RCLCPP_INFO(get_logger(),"L: "+std::to_string(encoder_l_count_));
   // Compare measured RPM to target velocity
   int direction_l = 1;
   if (command_->velocity[0] < 0)
@@ -174,7 +174,7 @@ void MotorDriver::control_loop()
 int main(int argc, char **argv)
 {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<MotorDriver>(32, 33, 11, 23, 13, 29));
+  rclcpp::spin(std::make_shared<MotorDriver>(32, 33, 11, 23, 13, 24));
   rclcpp::shutdown();
   return 0;
 }
