@@ -11,6 +11,7 @@ OnnxController::OnnxController() : Node("onnx_controller")
   output_tensor_ = Ort::Value::CreateTensor<float>(memory_info, output_buffer_, output_size_, output_shape_.data(), output_shape_.size());
 
   command_.name = {"motor_l", "motor_r"};
+  imu_state_ = std::make_shared<sensor_msgs::msg::Imu>();
 
   last_time_ = std::chrono::high_resolution_clock::now();
   auto control_loop_time = 4ms;
@@ -41,6 +42,14 @@ void OnnxController::control_loop()
 
   const char *input_names[] = {"observations"};
   const char *output_names[] = {"actions"};
+
+  input_buffer_[0] = imu_state_->orientation.x;
+  input_buffer_[1] = imu_state_->orientation.y;
+  input_buffer_[2] = imu_state_->orientation.z;
+  input_buffer_[3] = imu_state_->orientation.w;
+  input_buffer_[4] = imu_state_->angular_velocity.x;
+  input_buffer_[5] = imu_state_->angular_velocity.y;
+  input_buffer_[6] = imu_state_->angular_velocity.z;
 
   session_.Run(opt_, input_names, &input_tensor_, 1, output_names, &output_tensor_, 1);
 
