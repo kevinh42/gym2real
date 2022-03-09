@@ -1,8 +1,8 @@
 #include <motor_driver/motor_driver.h>
 #include <chrono>
 #define RPM_MEASURE 0
-#define RPM_L_TO_PWM 1.790 //Measured constant
-#define RPM_R_TO_PWM 1.805 //Measured constant
+#define RPM_L_TO_PWM 0.559 //Measured constant
+#define RPM_R_TO_PWM 0.554 //Measured constant
 #define PID_VEL_CONTROL 0 //Encoder resolution + sampling rate means we turn this off for this
 
 using std::placeholders::_1;
@@ -111,8 +111,6 @@ MotorDriver::~MotorDriver()
 void MotorDriver::command_callback(const sensor_msgs::msg::JointState::SharedPtr msg)
 {
   command_ = std::move(msg);
-  RCLCPP_INFO(get_logger(), std::to_string(command_->velocity[0]));
-  RCLCPP_INFO(get_logger(), std::to_string(command_->velocity[1]));
 }
 
 void MotorDriver::control_loop()
@@ -131,15 +129,15 @@ void MotorDriver::control_loop()
   RCLCPP_INFO(get_logger(),"L: "+std::to_string(encoder_l_count_));
   #endif
 
-  int direction_l = 1;
+  float direction_l = 1;
   if (command_->velocity[0] < 0)
     direction_l = -1;
-  float vel_l_target = abs(command_->velocity[0]) * 60. / 6.28; // convert from rad/s to rpm
+  float vel_l_target = abs(command_->velocity[0]) * (60. / 6.28); // convert from rad/s to rpm
 
-  int direction_r = 1;
+  float direction_r = 1;
   if (command_->velocity[1] < 0)
     direction_r = -1;
-  float vel_r_target = abs(command_->velocity[1]) * 60. / 6.28;
+  float vel_r_target = abs(command_->velocity[1]) * (60. / 6.28);
 
 
   #if PID_VEL_CONTROL
@@ -159,12 +157,12 @@ void MotorDriver::control_loop()
   pub_error_->publish(rpm_error_);
 
   // Clip range
-  int out_l = pid_l_out * direction_l * 0.5 + 50;
-  int out_r = pid_r_out * direction_r * 0.5 + 50;
+  double out_l = pid_l_out * direction_l * 0.5 + 50;
+  double out_r = pid_r_out * direction_r * 0.5 + 50;
   #else
   // Set velocity target based on measured constants
-  int out_l = (vel_l_target*RPM_L_TO_PWM)* direction_l * 0.5 + 50;
-  int out_r = (vel_r_target*RPM_R_TO_PWM)* direction_r * 0.5 + 50;
+  double out_l = (vel_l_target*RPM_L_TO_PWM)* direction_l * 0.5 + 50.;
+  double out_r = (vel_r_target*RPM_R_TO_PWM)* direction_r * 0.5 + 50.;
   #endif
 
   if (out_l > 100)
