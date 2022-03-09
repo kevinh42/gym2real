@@ -39,20 +39,24 @@ private:
     class CounterCallback
     {
     public:
-        CounterCallback(int &pin, bool a_or_b, volatile int &counter, volatile bool &read_a, volatile bool &read_b) : counter_(counter), pin_(pin), a_or_b_(a_or_b), read_a_(read_a), read_b_(read_b) {}
+        CounterCallback(int &pin, bool a_or_b, volatile int &counter, volatile bool &read_a, volatile bool &read_b, bool one_channel=false) : counter_(counter), pin_(pin), a_or_b_(a_or_b), read_a_(read_a), read_b_(read_b), one_channel_(one_channel) {}
         CounterCallback(const CounterCallback &) = default; // Copy-constructible
 
         void operator()(const std::string &channel) // Callable
         {
-            if (a_or_b_)
-            {
-                read_a_ = GPIO::input(pin_);
-                counter_ += (read_a_ != read_b_) ? +1 : -1;
-            }
-            else
-            {
-                read_b_ = GPIO::input(pin_);
-                counter_ += (read_a_ == read_b_) ? +1 : -1;
+            if (one_channel_){
+                counter_++;
+            } else{
+                if (a_or_b_)
+                {
+                    read_a_ = GPIO::input(pin_);
+                    counter_ += (read_a_ != read_b_) ? +1 : -1;
+                }
+                else
+                {
+                    read_b_ = GPIO::input(pin_);
+                    counter_ += (read_a_ == read_b_) ? +1 : -1;
+                }
             }
         }
 
@@ -67,6 +71,7 @@ private:
         bool a_or_b_;
         volatile bool &read_a_;
         volatile bool &read_b_;
+        bool one_channel_;
     };
 
     std::unique_ptr<MotorDriver::CounterCallback> cb_l_a_, cb_l_b_, cb_r_a_, cb_r_b_;

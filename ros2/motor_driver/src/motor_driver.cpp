@@ -1,6 +1,9 @@
 #include <motor_driver/motor_driver.h>
 #include <chrono>
 #define RPM_MEASURE 0
+#define RPM_L_TO_PWM 1.790 //Measured constant
+#define RPM_R_TO_PWM 1.805 //Measured constant
+#define PID_VEL_CONTROL 0 //Encoder resolution + sampling rate means we turn this off for this
 
 using std::placeholders::_1;
 using namespace std::chrono_literals;
@@ -35,15 +38,16 @@ MotorDriver::MotorDriver(int pwm_motor_l, int pwm_motor_r, int encoder_l_a, int 
   command_->velocity[1] = 0;
 
   // Set up event detection for encoders
-  auto control_loop_time = 10ms;
-
+  auto control_loop_time = 4ms;
+  
   cb_l_a_ = std::make_unique<MotorDriver::CounterCallback>(encoder_l_pin_a_, false, encoder_l_count_, read_a_l_, read_b_l_);
   cb_l_b_ = std::make_unique<MotorDriver::CounterCallback>(encoder_l_pin_b_, true, encoder_l_count_, read_a_l_, read_b_l_);
   cb_r_a_ = std::make_unique<MotorDriver::CounterCallback>(encoder_r_pin_a_, false, encoder_r_count_, read_a_r_, read_b_r_);
   cb_r_b_ = std::make_unique<MotorDriver::CounterCallback>(encoder_r_pin_b_, true, encoder_r_count_, read_a_r_, read_b_r_);
 
-#if RPM_MEASURE // Compile with macro to measure RPM
-  last_time_ = std::chrono::high_resolution_clock::now();
+#if RPM_MEASURE // For measuring RPM (uses single encoder channel since it's less noisy)
+  auto cb_l = MotorDriver::CounterCallback(encoder_l_pin_a_, false, encoder_l_count_, read_a_l_, read_b_l_, true);
+  auto cb_r = MotorDriver::CounterCallback(encoder_r_pin_a_, false, encoder_r_count_, read_a_l_, read_b_l_, true);
   // Measure RPM at each PWM value for 10s
   for (int pwm = 0; pwm <= 100; pwm += 5)
   {
@@ -53,10 +57,14 @@ MotorDriver::MotorDriver(int pwm_motor_l, int pwm_motor_r, int encoder_l_a, int 
     encoder_l_count_ = 0;
     encoder_r_count_ = 0;
     last_time_ = std::chrono::high_resolution_clock::now();
-    GPIO::add_event_detect(encoder_l_pin_a_, GPIO::BOTH, *cb_l_a_);
-    GPIO::add_event_detect(encoder_l_pin_b_, GPIO::BOTH, *cb_l_b_);
-    GPIO::add_event_detect(encoder_r_pin_a_, GPIO::BOTH, *cb_r_a_);
-    GPIO::add_event_detect(encoder_r_pin_b_, GPIO::BOTH, *cb_r_b_);
+    do
+    {
+      std::this_thread::yield();
+
+    } while (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - last_time_).count()/1e3 < 2.);
+    last_time_ = std::chrono::high_resolution_clock::now();
+    GPIO::add_event_detect(encoder_l_pin_a_, GPIO::RISING, cb_l);
+    GPIO::add_event_detect(encoder_r_pin_a_, GPIO::RISING, cb_r);
     do
     {
       std::this_thread::yield();
@@ -64,20 +72,19 @@ MotorDriver::MotorDriver(int pwm_motor_l, int pwm_motor_r, int encoder_l_a, int 
     } while (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - last_time_).count()/1e3 < dt);
     GPIO::remove_event_detect(encoder_l_pin_a_);
     GPIO::remove_event_detect(encoder_r_pin_a_);
-    GPIO::remove_event_detect(encoder_l_pin_b_);
-    GPIO::remove_event_detect(encoder_r_pin_b_);
-    float rpm_l = (float)encoder_l_count_ / 64. / 26.9 / dt * 60;
-    float rpm_r = (float)encoder_r_count_ / 64. / 26.9 / dt * 60;
+    float rpm_l = (float)encoder_l_count_ / 16. / 26.9 / dt * 60;
+    float rpm_r = (float)encoder_r_count_ / 16. / 26.9 / dt * 60;
     std::cout<<"Duty Cycle: "<<pwm<<std::endl;
     std::cout<<"RPM L: "<<rpm_l<<std::endl;
     std::cout<<"RPM R: "<<rpm_r<<std::endl;
   }
-#endif
 
+#elif PID_VEL_CONTROL
   GPIO::add_event_detect(encoder_l_pin_a_, GPIO::BOTH, *cb_l_a_);
   GPIO::add_event_detect(encoder_l_pin_b_, GPIO::BOTH, *cb_l_b_);
   GPIO::add_event_detect(encoder_r_pin_a_, GPIO::BOTH, *cb_r_a_);
   GPIO::add_event_detect(encoder_r_pin_b_, GPIO::BOTH, *cb_r_b_);
+#endif
   last_time_ = std::chrono::high_resolution_clock::now();
   control_loop_timer_ = create_wall_timer(control_loop_time, std::bind(&MotorDriver::control_loop, this));
 
@@ -110,18 +117,20 @@ void MotorDriver::command_callback(const sensor_msgs::msg::JointState::SharedPtr
 
 void MotorDriver::control_loop()
 {
+  #if PID_VEL_CONTROL
   // Remove event detection
   GPIO::remove_event_detect(encoder_l_pin_a_);
   GPIO::remove_event_detect(encoder_r_pin_a_);
   GPIO::remove_event_detect(encoder_l_pin_b_);
   GPIO::remove_event_detect(encoder_r_pin_b_);
-
+  
   auto now = std::chrono::high_resolution_clock::now();
   float dt = std::chrono::duration_cast<std::chrono::microseconds>(now - last_time_).count() / 1e6;
 
   RCLCPP_INFO(get_logger(),"R: "+std::to_string(encoder_r_count_));
   RCLCPP_INFO(get_logger(),"L: "+std::to_string(encoder_l_count_));
-  // Compare measured RPM to target velocity
+  #endif
+
   int direction_l = 1;
   if (command_->velocity[0] < 0)
     direction_l = -1;
@@ -132,6 +141,9 @@ void MotorDriver::control_loop()
     direction_r = -1;
   float vel_r_target = abs(command_->velocity[1]) * 60. / 6.28;
 
+
+  #if PID_VEL_CONTROL
+  // Compare measured RPM to target velocity
   float rpm_l = (float)encoder_l_count_ / 64. / 26.9 / dt * 60;
   float rpm_r = (float)encoder_r_count_ / 64. / 26.9 / dt * 60;
 
@@ -149,6 +161,12 @@ void MotorDriver::control_loop()
   // Clip range
   int out_l = pid_l_out * direction_l * 0.5 + 50;
   int out_r = pid_r_out * direction_r * 0.5 + 50;
+  #else
+  // Set velocity target based on measured constants
+  int out_l = (vel_l_target*RPM_L_TO_PWM)* direction_l * 0.5 + 50;
+  int out_r = (vel_r_target*RPM_R_TO_PWM)* direction_r * 0.5 + 50;
+  #endif
+
   if (out_l > 100)
     out_l = 100;
   if (out_l < 0)
@@ -161,6 +179,7 @@ void MotorDriver::control_loop()
   pwm_l_->ChangeDutyCycle(out_l);
   pwm_r_->ChangeDutyCycle(out_r);
 
+  #if PID_VEL_CONTROL
   // Add back event detection
   encoder_l_count_ = 0;
   encoder_r_count_ = 0;
@@ -169,6 +188,7 @@ void MotorDriver::control_loop()
   GPIO::add_event_detect(encoder_r_pin_a_, GPIO::BOTH, *cb_r_a_);
   GPIO::add_event_detect(encoder_r_pin_b_, GPIO::BOTH, *cb_r_b_);
   last_time_ = std::chrono::high_resolution_clock::now();
+  #endif
 }
 
 int main(int argc, char **argv)
