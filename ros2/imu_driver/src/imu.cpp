@@ -34,7 +34,7 @@ bool IMU::writeByte(int address, int value)
     return true;
 }
 
-bool IMU::readByte(int address, int* data)
+bool IMU::readByte(int address, int8_t* data)
 {
     size_t byte_size = sizeof(uint8_t);
     size_t read_size;
@@ -47,21 +47,34 @@ bool IMU::readByte(int address, int* data)
     return true;
 }
 
-bool IMU::readWord(int address, int* data)
+bool IMU::readWord(int address, int16_t* data)
 {
-    int low_byte;
-    if (!readByte(address, data)) {     
+    size_t word_size = sizeof(uint16_t);
+    size_t read_size;
+    if ((read_size = i2c_read(&device_, address, data, word_size)) == -1) {
         return false;
-    }
-    if (!readByte(address + 1, &low_byte)) {
+    } else if (read_size != word_size) {
         return false;
     }
 
-    *data = (*data << 8) | low_byte;
+    *data = (int16_t) be16toh((uint16_t) *data);
 
-    // Negative case
-    if (*data >= 0x8000) {
-        *data = -((65535 - *data) + 1);
+    return true;
+}
+
+bool IMU::readXYZ(int address, int16_t* data)
+{
+    size_t xyz_size = sizeof(uint16_t) * 3;
+    size_t read_size;
+    if ((read_size = i2c_read(&device_, address, data, xyz_size)) == -1) {
+        return false;
+    } else if (read_size != xyz_size) {
+        return false;
+    }
+
+    for (int i = 0; i < 3; i++)
+    {
+        data[i] = (int16_t) be16toh((uint16_t) data[i]);
     }
 
     return true;
@@ -131,7 +144,7 @@ int IMU::getAccelRange(bool raw)
 {
     checkInitialized();
 
-    int raw_val;
+    int8_t raw_val;
     readByte(ACCEL_CONFIG, &raw_val);
 
     if (raw) {
@@ -157,7 +170,7 @@ int IMU::getGyroRange(bool raw)
 {
     checkInitialized();
 
-    int raw_val;
+    int8_t raw_val;
     readByte(GYRO_CONFIG, &raw_val);
 
     if (raw) {
@@ -179,24 +192,16 @@ int IMU::getGyroRange(bool raw)
     return -1;
 }
 
-void IMU::getGyroData(Data* data)
+double IMU::getGyroScale(const int& range)
 {
-    checkInitialized();
-
-    readWord(GYRO_XOUT0, &data->_x);
-    readWord(GYRO_YOUT0, &data->_y);
-    readWord(GYRO_ZOUT0, &data->_z);
-
     double scale_modifier;
-    int range = getGyroRange(true);
-
     switch (range)
     {
     case GYRO_RANGE_250DEG:
         scale_modifier = GYRO_SCALE_MODIFIER_250DEG;
         break;
     case GYRO_RANGE_500DEG:
-        scale_modifier = GYRO_SCALE_MODIFIER_500DEG;
+        scale_modifier =  GYRO_SCALE_MODIFIER_500DEG;
         break;
     case GYRO_RANGE_1000DEG:
         scale_modifier = GYRO_SCALE_MODIFIER_1000DEG;
@@ -209,20 +214,24 @@ void IMU::getGyroData(Data* data)
         break;
     }
 
-    data->scale = 1.0 / scale_modifier;
+    return 1.0 / scale_modifier;
 }
 
-void IMU::getAccelData(Data* data, bool g)
+void IMU::getGyroData(Data* data)
 {
     checkInitialized();
 
-    readWord(ACCEL_XOUT0, &data->_x);
-    readWord(ACCEL_YOUT0, &data->_y);
-    readWord(ACCEL_ZOUT0, &data->_z);
+    readXYZ(GYRO_XOUT0, &data->_xyz[0]);
 
+    int range = getGyroRange(true);
+    double scale = getGyroScale(range);
+
+    data->scale = scale;
+}
+
+double IMU::getAccelScale(const int& range, bool g)
+{
     double scale_modifier;
-    int range = getAccelRange(true);
-
     switch (range)
     {
     case ACCEL_RANGE_2G:
@@ -242,26 +251,54 @@ void IMU::getAccelData(Data* data, bool g)
         break;
     }
 
-    data->scale = 1.0 / scale_modifier;
+    double gravity_scale = g ? 1.0 : GRAVITY_MS2;        
 
-    if (!g) {
-        data->scale *= GRAVITY_MS2;
-    }
+    return 1.0 / scale_modifier * gravity_scale;
+}
+
+void IMU::getAccelData(Data* data, bool g)
+{
+    checkInitialized();
+
+    readXYZ(ACCEL_XOUT0, &data->_xyz[0]);
+
+    int range = getAccelRange(true);
+    double scale = getAccelScale(range, g);
+
+    data->scale = scale;
 }
 
 void IMU::getTempData(int* data)
 {
     checkInitialized();
 
-    readWord(TEMP_OUT0, data);
+    readWord(TEMP_OUT0, (int16_t*)data);
 }
 
-void IMU::getData(DataIMU* data)
+bool IMU::getData(DataIMU* data)
 {
     checkInitialized();
 
     memset(data, 0, sizeof(DataIMU));
-    getAccelData(&data->accel);
-    getGyroData(&data->gyro);
-    getTempData(&data->_temp);
+
+    int accel_range = getAccelRange();
+    data->accel().scale = getAccelScale(accel_range, false);
+
+    int gyro_range = getGyroRange();
+    data->gyro().scale = getGyroScale(gyro_range);
+
+    size_t data_size = sizeof(data->_data);
+    size_t read_size;
+    if ((read_size = i2c_read(&device_, ACCEL_XOUT0, &data->_data[0], data_size)) == -1) {
+        return false;
+    } else if (read_size != data_size) {
+        return false;
+    }
+
+    for (int i = 0; i < 7; i++)
+    {
+        data->_data[i] = (int16_t) be16toh((uint16_t) data->_data[i]);
+    }
+
+    return true;
 }

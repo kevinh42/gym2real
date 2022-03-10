@@ -42,6 +42,10 @@ IMUDriver::IMUDriver(int interrupt_pin, int sda_pin, int scl_pin, int address)
     cb_ = new Callback(boost::bind(&IMUDriver::data_callback, this, _1), "data_callback");
     imu_->init(sda_pin, scl_pin);
     imu_->configure(INT_ENABLE, 0x01);
+    imu_->configure(SMPLRT_DIV, 0x07);
+    imu_->configure(INT_PIN_CFG, 0x00);
+    imu_->setGyroRange(IMU::DEG250);
+    imu_->setAccelRange(IMU::G2);
 
     GPIO::setmode(GPIO::BOARD);
     GPIO::setup(interrupt_pin, GPIO::IN);
@@ -59,12 +63,12 @@ void IMUDriver::data_callback(const std::string& channel)
     imu_->getData(data_);
 
     sensor_msgs::msg::Imu msg;
-    msg.angular_velocity.x = data_->gyro.x();
-    msg.angular_velocity.y = data_->gyro.y();
-    msg.angular_velocity.z = data_->gyro.z();
-    msg.linear_acceleration.x = data_->accel.x();
-    msg.linear_acceleration.y = data_->accel.y();
-    msg.linear_acceleration.z = data_->accel.z();
+    msg.angular_velocity.x = data_->gyro().x();
+    msg.angular_velocity.y = data_->gyro().y();
+    msg.angular_velocity.z = data_->gyro().z();
+    msg.linear_acceleration.x = data_->accel().x();
+    msg.linear_acceleration.y = data_->accel().y();
+    msg.linear_acceleration.z = data_->accel().z();
 
     publisher_->publish(msg);
 }

@@ -36,6 +36,8 @@
 #define GYRO_CONFIG  0x1B
 #define ACCEL_CONFIG 0x1C
 #define INT_ENABLE   0x38
+#define INT_STATUS   0x3A
+#define INT_PIN_CFG  0x37
 
 // Pre-defined ranges
 #define ACCEL_RANGE_2G     0x00
@@ -72,31 +74,52 @@ static const std::map<int, std::string> i2c_scl_map = {
 };
 
 struct Data {
-    int _x;
-    int _y;
-    int _z;
+    int16_t _xyz[3];
 
     double scale;
 
     Data()
-        : _x(0), _y(0), _z(0), scale(1.0)
+        : _xyz {0, 0, 0}, scale(1.0)
     {}
 
-    double x() { return (double) _x * scale; }
-    double y() { return (double) _y * scale; }
-    double z() { return (double) _z * scale; }
+    Data(const int16_t& x, const int16_t& y, const int16_t& z)
+        : _xyz {x, y, z}
+    {}
+
+    double x() { return (double) _xyz[0] * scale; }
+    double y() { return (double) _xyz[1] * scale; }
+    double z() { return (double) _xyz[2] * scale; }
 };
 
 struct DataIMU {
-    Data accel;
-    Data gyro;
-    int _temp;
+    int16_t _data[7];
 
     DataIMU()
-        : _temp(0)
+        : _data {0, 0, 0, 0, 0, 0, 0}
     {}
 
-    double temp() { return ((double) _temp / 340.0) + 36.53; }
+    double temp() { return ((double) _data[3] / 340.0) + 36.53; }
+    Data& accel()  
+    { 
+        _accel._xyz[0] = _data[0];
+        _accel._xyz[1] = _data[1];
+        _accel._xyz[2] = _data[2];
+
+        return _accel;
+    }
+
+    Data& gyro()
+    {
+        _gyro._xyz[0] = _data[4];
+        _gyro._xyz[1] = _data[5];
+        _gyro._xyz[2] = _data[6];
+
+        return _gyro;
+    }
+
+private:
+    Data _accel;
+    Data _gyro;
 };
 
 class IMU
@@ -141,7 +164,7 @@ public:
      * 
      * @param data DataIMU object
      */
-    void getData(DataIMU* data);
+    bool getData(DataIMU* data);
     /**
      * @brief Get latest data from the gyroscope
      * 
@@ -194,14 +217,21 @@ private:
      * 
      * @param data uint8_t pointer
      */
-    bool readByte(int address, int* data);
+    bool readByte(int address, int8_t* data);
 
     /**
      * @brief Read two bytes of data
      * 
      * @param data uint16_t pointer
      */
-    bool readWord(int address, int* data);
+    bool readWord(int address, int16_t* data);
+
+    /**
+     * @brief Read six bytes of data
+     * 
+     * @param data uint16_t pointer
+     */
+    bool readXYZ(int address, int16_t* data);
 
     /**
      * @brief Write to IMU register
@@ -211,7 +241,26 @@ private:
      */
     bool writeByte(int address, int value);
 
+    /**
+     * @brief Check if the IMU has been properly initialized
+     * 
+     * @throw std::runtime_error If not initialized
+     */
     void checkInitialized();
+
+    /**
+     * @brief Get the gyroscope scale modifier
+     * 
+     * @param range The range setting of the gyroscope
+     */
+    double getGyroScale(const int& range);
+
+    /**
+     * @brief Get the accelerometer scale modifier
+     * 
+     * @param range The range setting of the accelerometer
+     */
+    double getAccelScale(const int& range, bool g);
 
     bool initialized_;
     int address_;

@@ -25,12 +25,14 @@ int main (void)
         printf("Gyroscope Range (deg): %i\n", gyro_range);
 
         printf("Temperature (C): %.2f\n", data.temp());
-        printf("Acceleration x (m/s^2): %.2f\n", data.accel.x());
-        printf("Acceleration y (m/s^2): %.2f\n", data.accel.y());
-        printf("Acceleration z (m/s^2): %.2f\n", data.accel.z());
-        printf("Gyroscope x (deg/s): %.2f\n", data.gyro.x());
-        printf("Gyroscope y (deg/s): %.2f\n", data.gyro.y());
-        printf("Gyroscope z (deg/s): %.2f\n", data.gyro.z());
+        printf("Acceleration x (m/s^2): %.2f\n", data.accel().x());
+        printf("Acceleration y (m/s^2): %.2f\n", data.accel().y());
+        printf("Acceleration z (m/s^2): %.2f\n", data.accel().z());
+        printf("Acceleration scale factor: %.4f\n", data.accel().scale);
+        printf("Gyroscope x (deg/s): %.2f\n", data.gyro().x());
+        printf("Gyroscope y (deg/s): %.2f\n", data.gyro().y());
+        printf("Gyroscope z (deg/s): %.2f\n", data.gyro().z());
+        printf("Gyroscope scale factor: %.4f\n", data.gyro().scale);
 
         sleep_for(std::chrono::milliseconds(100));
     }
