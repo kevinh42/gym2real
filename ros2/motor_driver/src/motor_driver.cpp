@@ -38,7 +38,7 @@ MotorDriver::MotorDriver(int pwm_motor_l, int pwm_motor_r, int encoder_l_a, int 
   command_->velocity[1] = 0;
 
   // Set up event detection for encoders
-  auto control_loop_time = 4ms;
+  auto control_loop_time = 5ms;
   
   cb_l_a_ = std::make_unique<MotorDriver::CounterCallback>(encoder_l_pin_a_, false, encoder_l_count_, read_a_l_, read_b_l_);
   cb_l_b_ = std::make_unique<MotorDriver::CounterCallback>(encoder_l_pin_b_, true, encoder_l_count_, read_a_l_, read_b_l_);

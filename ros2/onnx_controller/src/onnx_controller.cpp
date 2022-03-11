@@ -14,7 +14,7 @@ OnnxController::OnnxController() : Node("onnx_controller")
   imu_state_ = std::make_shared<sensor_msgs::msg::Imu>();
 
   last_time_ = std::chrono::high_resolution_clock::now();
-  auto control_loop_time = 4ms;
+  auto control_loop_time = 5ms;
   control_loop_timer_ = create_wall_timer(control_loop_time, std::bind(&OnnxController::control_loop, this));
 
   // ROS2 setup
@@ -43,19 +43,19 @@ void OnnxController::control_loop()
   const char *input_names[] = {"observations"};
   const char *output_names[] = {"actions"};
 
-  input_buffer_[0] = imu_state_->orientation.x;
-  input_buffer_[1] = imu_state_->orientation.y;
-  input_buffer_[2] = imu_state_->orientation.z;
-  input_buffer_[3] = imu_state_->orientation.w;
-  input_buffer_[4] = imu_state_->angular_velocity.x;
-  input_buffer_[5] = imu_state_->angular_velocity.y;
-  input_buffer_[6] = imu_state_->angular_velocity.z;
+  input_buffer_[0] = 0;//imu_state_->orientation.x;
+  input_buffer_[1] = 0;//imu_state_->orientation.y;
+  input_buffer_[2] = 0;//imu_state_->orientation.z;
+  input_buffer_[3] = 0;//imu_state_->orientation.w;
+  // input_buffer_[4] = imu_state_->angular_velocity.x;
+  // input_buffer_[5] = imu_state_->angular_velocity.y;
+  // input_buffer_[6] = imu_state_->angular_velocity.z;
 
   session_.Run(opt_, input_names, &input_tensor_, 1, output_names, &output_tensor_, 1);
 
-
   command_.header.stamp = get_clock()->now();
-  command_.velocity = {output_buffer_[0], output_buffer_[1]};
+  command_.velocity = {output_buffer_[0]*8.38, output_buffer_[1]*8.38};
+
   pub_->publish(command_);
 }
 

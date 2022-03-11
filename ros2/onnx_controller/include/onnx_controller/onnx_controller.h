@@ -25,7 +25,7 @@ private:
     std::chrono::time_point<std::chrono::high_resolution_clock> last_time_;
     rclcpp::TimerBase::SharedPtr control_loop_timer_;
 
-    float input_buffer_[7] = {0};
+    float input_buffer_[4] = {0};
     float output_buffer_[2] = {0};
 
     Ort::Env env_;
@@ -33,9 +33,9 @@ private:
     Ort::RunOptions opt_{nullptr};
 
     Ort::Value input_tensor_{nullptr};
-    std::array<int64_t, 2> input_shape_{1,7};
+    std::array<int64_t, 2> input_shape_{1,4};
     Ort::Value output_tensor_{nullptr};
     std::array<int64_t, 2> output_shape_{1,2};
-    int input_size_ = 28;
-    int output_size_ = 8;
+    int input_size_ = 4;//*sizeof(float);
+    int output_size_ = 2;//*sizeof(float);
 };
