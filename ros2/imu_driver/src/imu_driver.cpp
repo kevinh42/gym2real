@@ -85,6 +85,8 @@ void IMUDriver::data_callback(const std::string& channel)
 
     madgwickAHRS();
 
+    msg.header.stamp = get_clock()->now();
+
     msg.orientation = q_;
 
     publisher_->publish(msg);
