@@ -15,6 +15,7 @@ class ImuSubscriber(Node):
         self.subscription
         self.accel = {'x': [], 'y': [], 'z': []}
         self.gyro = {'x': [], 'y': [], 'z': []}
+        self.q = {'x': [], 'y': [], 'z': [], 'w': []}
         print("Initialized")
 
     def data_callback(self, msg):
@@ -27,6 +28,11 @@ class ImuSubscriber(Node):
         self.accel['y'].append(msg.linear_acceleration.y)
         self.accel['z'].append(msg.linear_acceleration.z)
 
+        self.q['x'].append(msg.orientation.x)
+        self.q['y'].append(msg.orientation.y)
+        self.q['z'].append(msg.orientation.z)
+        self.q['w'].append(msg.orientation.w)
+
 def main(args=None):
     rclpy.init(args=args)
 
@@ -37,9 +43,10 @@ def main(args=None):
     except KeyboardInterrupt:
         pass
 
-    plt.plot(subscriber.gyro['x'], label="gyro_x")
-    plt.plot(subscriber.gyro['y'], label="gyro_y")
-    plt.plot(subscriber.gyro['z'], label="gyro_z")
+    plt.plot(subscriber.q['x'], label="quat x")
+    plt.plot(subscriber.q['y'], label="quat y")
+    plt.plot(subscriber.q['z'], label="quat z")
+    plt.plot(subscriber.q['w'], label="quat w")
     plt.savefig('/root/code/gym2real/ros2/experiments/images/imu.png')
 
     subscriber.destroy_node()
