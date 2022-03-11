@@ -35,7 +35,16 @@ target_link_libraries(sensors
 #     sensors
 # )
 
-# IMU driver
+add_library(imu
+  src/imu.cpp
+)
+
+add_executable(test_imu test/test_imu.cpp)
+target_link_libraries(test_imu
+  imu
+  /usr/lib/libi2c.a
+)
+
 add_executable(imu_driver src/imu_driver.cpp)
 
 target_include_directories(imu_driver PUBLIC
@@ -45,7 +54,7 @@ target_include_directories(imu_driver PUBLIC
 
 target_link_libraries(imu_driver
   JetsonGPIO::JetsonGPIO
-  sensors
+  imu
   /usr/lib/libi2c.a
   ${BOOST_LIBRARIES}
 )
