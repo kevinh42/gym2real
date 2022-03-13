@@ -79,10 +79,11 @@ MotorDriver::MotorDriver(int pwm_motor_l, int pwm_motor_r, int encoder_l_a, int 
     std::cout<<"RPM R: "<<rpm_r<<std::endl;
   }
 
-#elif PID_VEL_CONTROL
+#else
+  //Track position of wheels with encoders
   GPIO::add_event_detect(encoder_l_pin_a_, GPIO::BOTH, *cb_l_a_);
-  GPIO::add_event_detect(encoder_l_pin_b_, GPIO::BOTH, *cb_l_b_);
   GPIO::add_event_detect(encoder_r_pin_a_, GPIO::BOTH, *cb_r_a_);
+  GPIO::add_event_detect(encoder_l_pin_b_, GPIO::BOTH, *cb_l_b_);
   GPIO::add_event_detect(encoder_r_pin_b_, GPIO::BOTH, *cb_r_b_);
 #endif
   last_time_ = std::chrono::high_resolution_clock::now();
@@ -93,9 +94,14 @@ MotorDriver::MotorDriver(int pwm_motor_l, int pwm_motor_r, int encoder_l_a, int 
       "motor_command",
       10,
       std::bind(&MotorDriver::command_callback, this, _1));
+  pub_state_ = create_publisher<sensor_msgs::msg::JointState>(
+      "motor_state",
+      10);
+#if PID_VEL_CONTROL
   pub_error_ = create_publisher<sensor_msgs::msg::JointState>(
       "motor_error",
       10);
+#endif
 }
 
 MotorDriver::~MotorDriver()
@@ -176,6 +182,13 @@ void MotorDriver::control_loop()
 
   pwm_l_->ChangeDutyCycle(out_l);
   pwm_r_->ChangeDutyCycle(out_r);
+
+  // Publish wheel position ()
+  motor_state_.header.stamp = get_clock()->now();
+  motor_state_.name = {"motor_l", "motor_r"};
+  motor_state_.position = {encoder_l_count_/64./26.9 * 6.283185,encoder_r_count_/64./26.9 * 6.283185}; //wheel position in radians
+  motor_state_.velocity = {command_->velocity[0],command_->velocity[1]};
+  pub_state_->publish(motor_state_);
 
   #if PID_VEL_CONTROL
   // Add back event detection

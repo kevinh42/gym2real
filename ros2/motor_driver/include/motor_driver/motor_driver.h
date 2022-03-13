@@ -16,9 +16,11 @@ private:
     void control_loop();
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr sub_;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr pub_error_;
+    rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr pub_state_;
 
     sensor_msgs::msg::JointState::SharedPtr command_;
     sensor_msgs::msg::JointState rpm_error_;
+    sensor_msgs::msg::JointState motor_state_;
 
     int encoder_l_pin_a_;
     int encoder_r_pin_a_;
@@ -49,13 +51,13 @@ private:
             } else{
                 if (a_or_b_)
                 {
-                    read_a_ = GPIO::input(pin_);
-                    counter_ += (read_a_ != read_b_) ? +1 : -1;
+                    read_b_ = GPIO::input(pin_);
+                    counter_ += (read_a_ == read_b_) ? +1 : -1;
                 }
                 else
                 {
-                    read_b_ = GPIO::input(pin_);
-                    counter_ += (read_a_ == read_b_) ? +1 : -1;
+                    read_a_ = GPIO::input(pin_);
+                    counter_ += (read_a_ != read_b_) ? +1 : -1;
                 }
             }
         }
@@ -88,7 +90,7 @@ private:
         {
             float rate_error = error - last_error;
             sum_error += error * dt;
-            float pid_out = Kp * error + Ki * sum_error + Kd * rate_error;
+            float pid_out = Kp * error + Ki * sum_error + Kd * rate_error/dt;
             last_error = error;
             return pid_out;
         }
