@@ -167,8 +167,8 @@ void MotorDriver::control_loop()
   double out_r = pid_r_out * direction_r * 0.5 + 50;
   #else
   // Set velocity target based on measured constants
-  double out_l = (vel_l_target*RPM_L_TO_PWM)* direction_l * 0.5 + 50.;
-  double out_r = (vel_r_target*RPM_R_TO_PWM)* direction_r * 0.5 + 50.;
+  double out_l = (-vel_l_target*RPM_L_TO_PWM)* direction_l * 0.5 + 50.;
+  double out_r = (-vel_r_target*RPM_R_TO_PWM)* direction_r * 0.5 + 50.;
   #endif
 
   if (out_l > 100)
@@ -186,7 +186,7 @@ void MotorDriver::control_loop()
   // Publish wheel position ()
   motor_state_.header.stamp = get_clock()->now();
   motor_state_.name = {"motor_l", "motor_r"};
-  motor_state_.position = {encoder_l_count_/64./26.9 * 6.283185,encoder_r_count_/64./26.9 * 6.283185}; //wheel position in radians
+  motor_state_.position = {encoder_l_count_/64./26.9 * 6.283185,-encoder_r_count_/64./26.9 * 6.283185}; //wheel position in radians
   motor_state_.velocity = {command_->velocity[0],command_->velocity[1]};
   pub_state_->publish(motor_state_);
 

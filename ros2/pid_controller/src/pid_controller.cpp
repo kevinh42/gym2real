@@ -60,11 +60,11 @@ void PidController::control_loop()
   auto & w = imu_state_->orientation.w;
   float pitch_target = 0;
   
-  float cur_pitch = std::atan2(2*y*w + 2*x*z, 1 - 2*y*y - 2*z*z);
+  float cur_pitch = -std::atan2(2*y*w + 2*x*z, 1 - 2*y*y - 2*z*z);
   float pitch_error = pitch_target - cur_pitch;
   
   float pos_target = 0;
-  float cur_pos = (motor_state_->position[0] - motor_state_->position[1])/2; //avg position (flip sign for one motor since direction is flipped?)
+  float cur_pos = (motor_state_->position[0] + motor_state_->position[1])/2;
   float pos_error = pos_target - cur_pos;
 
   float pid_out = pid_pitch_.update(pitch_error,dt) + pid_pos_.update(pos_error,dt);
