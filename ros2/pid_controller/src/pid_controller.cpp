@@ -59,17 +59,24 @@ void PidController::control_loop()
   auto & z = imu_state_->orientation.z;
   auto & w = imu_state_->orientation.w;
   float pitch_target = 0;
-  float pitch_error = pitch_target - std::atan2(2*x*w - 2*y*z, 1 - 2*x*x - 2*z*z);;
+  
+  float cur_pitch = std::atan2(2*y*w + 2*x*z, 1 - 2*y*y - 2*z*z);
+  float pitch_error = pitch_target - cur_pitch;
   
   float pos_target = 0;
-  float pos_error = pos_target - (abs(motor_state_->position[0])+abs(motor_state_->position[1]))/2; //avg abs position
+  float cur_pos = (motor_state_->position[0] - motor_state_->position[1])/2; //avg position (flip sign for one motor since direction is flipped?)
+  float pos_error = pos_target - cur_pos;
 
   float pid_out = pid_pitch_.update(pitch_error,dt) + pid_pos_.update(pos_error,dt);
 
   last_time_ = std::chrono::high_resolution_clock::now();
 
+  RCLCPP_INFO(get_logger(),std::to_string(cur_pitch*180/3.14));
+  std::cout << "Pos: " << cur_pos << std::endl;
+  std::cout << "PID out: " << pid_out << std::endl;
+
   command_.header.stamp = get_clock()->now();
-  command_.velocity = {pid_out, -pid_out};
+  command_.velocity = {pid_out, pid_out};
   pub_->publish(command_);
 }
 
