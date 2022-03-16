@@ -59,7 +59,6 @@ IMUDriver::IMUDriver(int interrupt_pin, int sda_pin, int scl_pin, int address)
 
     GPIO::setmode(GPIO::BOARD);
     GPIO::setup(interrupt_pin, GPIO::IN);
-    GPIO::add_event_detect(interrupt_pin, GPIO::RISING, *cb_);
 
     pthread_t this_thread = pthread_self();
     struct sched_param params;
@@ -75,6 +74,8 @@ IMUDriver::IMUDriver(int interrupt_pin, int sda_pin, int scl_pin, int address)
         // Print thread scheduling priority
         RCLCPP_INFO(get_logger(), "Thread priority is " + std::to_string(params.sched_priority));
     }
+
+    GPIO::add_event_detect(interrupt_pin, GPIO::RISING, *cb_, 1);
 }
 
 IMUDriver::~IMUDriver()

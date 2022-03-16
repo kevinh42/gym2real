@@ -64,7 +64,7 @@ void PidController::control_loop()
   float pitch_error = pitch_target - cur_pitch;
   
   float pos_target = 0;
-  float cur_pos = (motor_state_->position[0] + motor_state_->position[1])/2;
+  float cur_pos = -(motor_state_->position[0] + motor_state_->position[1])/2;
   float pos_error = pos_target - cur_pos;
 
   float pid_out = pid_pitch_.update(pitch_error,dt) + pid_pos_.update(pos_error,dt);
