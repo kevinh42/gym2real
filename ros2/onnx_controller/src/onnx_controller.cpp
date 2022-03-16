@@ -43,10 +43,10 @@ void OnnxController::control_loop()
   const char *input_names[] = {"observations"};
   const char *output_names[] = {"actions"};
 
-  input_buffer_[0] = 0;//imu_state_->orientation.x;
-  input_buffer_[1] = 0;//imu_state_->orientation.y;
-  input_buffer_[2] = 0;//imu_state_->orientation.z;
-  input_buffer_[3] = 0;//imu_state_->orientation.w;
+  input_buffer_[0] = imu_state_->orientation.y; // imu Y -> sim X
+  input_buffer_[1] = imu_state_->orientation.z; // imu Z -> sim Y
+  input_buffer_[2] = imu_state_->orientation.x; // imu X -> sim Z
+  input_buffer_[3] = imu_state_->orientation.w;
   // input_buffer_[4] = imu_state_->angular_velocity.x;
   // input_buffer_[5] = imu_state_->angular_velocity.y;
   // input_buffer_[6] = imu_state_->angular_velocity.z;

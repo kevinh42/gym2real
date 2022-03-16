@@ -7,6 +7,7 @@
 #include <boost/function.hpp>
 
 #include <chrono>
+#include <pthread.h>
 
 #define BETA_IMU 0.75l // Change to IMU gyro error
 #define SAMPLE_RATE 1e3l
@@ -15,36 +16,32 @@
 class Callback
 {
 public:
-    typedef boost::function<void(const std::string&)> Handle;
+    typedef boost::function<void(const std::string &)> Handle;
 
-    Callback(Handle fxn, const std::string& name)
-        : fxn_(fxn)
-        , name_(name)
-    {}
+    Callback(Handle fxn, const std::string &name)
+        : fxn_(fxn), name_(name)
+    {
+    }
 
-    Callback(const Callback&) = default;
+    Callback(const Callback &) = default;
 
-    void operator()(const std::string& channel)
+    void operator()(const std::string &channel)
     {
         fxn_(channel);
     }
 
-    bool operator==(const Callback& other) const 
+    bool operator==(const Callback &other) const
     {
         return name_ == other.name_;
     }
 
 private:
-    boost::function<void(const std::string&)> fxn_;
+    boost::function<void(const std::string &)> fxn_;
     std::string name_;
 };
 
 IMUDriver::IMUDriver(int interrupt_pin, int sda_pin, int scl_pin, int address)
-    : Node("imu_driver")
-    , imu_(new IMU(address))
-    , data_(new DataIMU())
-    , beta_(BETA_IMU)
-    , sample_freq_(SAMPLE_RATE)
+    : Node("imu_driver"), imu_(new IMU(address)), data_(new DataIMU()), beta_(BETA_IMU), sample_freq_(SAMPLE_RATE)
 {
     publisher_ = create_publisher<sensor_msgs::msg::Imu>("imu_data", 10);
     cb_ = new Callback(boost::bind(&IMUDriver::data_callback, this, _1), "data_callback");
@@ -63,6 +60,21 @@ IMUDriver::IMUDriver(int interrupt_pin, int sda_pin, int scl_pin, int address)
     GPIO::setmode(GPIO::BOARD);
     GPIO::setup(interrupt_pin, GPIO::IN);
     GPIO::add_event_detect(interrupt_pin, GPIO::RISING, *cb_);
+
+    pthread_t this_thread = pthread_self();
+    struct sched_param params;
+    params.sched_priority = 80;
+    // std::cout << "Set realtime priority = " << params.sched_priority << std::endl;
+    int ret = pthread_setschedparam(this_thread, SCHED_FIFO, &params);
+    if (ret != 0)
+    {
+        RCLCPP_ERROR(get_logger(), "Failed to set thread priority!");
+    }
+    else
+    {
+        // Print thread scheduling priority
+        RCLCPP_INFO(get_logger(), "Thread priority is " + std::to_string(params.sched_priority));
+    }
 }
 
 IMUDriver::~IMUDriver()
@@ -71,7 +83,7 @@ IMUDriver::~IMUDriver()
     GPIO::cleanup();
 }
 
-void IMUDriver::data_callback(const std::string& channel)
+void IMUDriver::data_callback(const std::string &channel)
 {
     imu_->getData(data_);
 
@@ -94,7 +106,7 @@ void IMUDriver::data_callback(const std::string& channel)
 
 // https://x-io.co.uk/open-source-imu-and-ahrs-algorithms/
 void IMUDriver::madgwickAHRS()
-{   
+{
     double gx = data_->gyro().x() * DEG_TO_RAD;
     double gy = data_->gyro().y() * DEG_TO_RAD;
     double gz = data_->gyro().z() * DEG_TO_RAD;
@@ -108,22 +120,24 @@ void IMUDriver::madgwickAHRS()
 
     // Quaternion derivative using gyro data
     qDot.w = 0.5 * (-q_.x * gx - q_.y * gy - q_.z * gz);
-    qDot.x = 0.5 * ( q_.w * gx + q_.y * gz - q_.z * gy);
-    qDot.y = 0.5 * ( q_.w * gy - q_.x * gz + q_.z * gx);
-    qDot.z = 0.5 * ( q_.w * gz + q_.x * gy - q_.y * gx);
+    qDot.x = 0.5 * (q_.w * gx + q_.y * gz - q_.z * gy);
+    qDot.y = 0.5 * (q_.w * gy - q_.x * gz + q_.z * gx);
+    qDot.z = 0.5 * (q_.w * gz + q_.x * gy - q_.y * gx);
 
     // http://en.wikipedia.org/wiki/Fast_inverse_square_root
-    auto invSqrt = [](const double& x) {
+    auto invSqrt = [](const double &x)
+    {
         double halfx = 0.5 * x;
         double y = x;
-        long i = *(long*)&y;
-        i = 0x5fe6eb50c7b537a9 - (i>>1); // https://stackoverflow.com/questions/11644441/fast-inverse-square-root-on-x64
-        y = *(double*)&i;
+        long i = *(long *)&y;
+        i = 0x5fe6eb50c7b537a9 - (i >> 1); // https://stackoverflow.com/questions/11644441/fast-inverse-square-root-on-x64
+        y = *(double *)&i;
         y = y * (1.5 - (halfx * y * y));
         return y;
     };
 
-    if (!((ax == 0.0) && (ay == 0.0) && (az == 0.0))) {
+    if (!((ax == 0.0) && (ay == 0.0) && (az == 0.0)))
+    {
 
         // Normalize accelerometer data
         recip_norm = invSqrt(ax * ax + ay * ay + az * az);
@@ -178,7 +192,7 @@ void IMUDriver::madgwickAHRS()
     q_.z *= recip_norm;
 }
 
-int main (int argc, char **argv)
+int main(int argc, char **argv)
 {
     rclcpp::init(argc, argv);
     rclcpp::spin(std::make_shared<IMUDriver>(19, 3, 5, 0x68));
