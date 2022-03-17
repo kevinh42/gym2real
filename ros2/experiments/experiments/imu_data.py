@@ -2,6 +2,7 @@ import rclpy
 import matplotlib.pyplot as plt
 from rclpy.node import Node
 from sensor_msgs.msg import Imu
+import numpy as np
 
 class ImuSubscriber(Node):
     def __init__(self):
@@ -47,6 +48,8 @@ def main(args=None):
     plt.plot(subscriber.q['y'], label="quat y")
     plt.plot(subscriber.q['z'], label="quat z")
     plt.plot(subscriber.q['w'], label="quat w")
+    plt.title("Quaternion Representation Through IMU Movement")
+    plt.legend()
     plt.savefig('/root/code/gym2real/ros2/experiments/images/imu.png')
 
     subscriber.destroy_node()
