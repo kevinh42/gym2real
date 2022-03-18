@@ -7,7 +7,7 @@
 #include <boost/function.hpp>
 
 #include <chrono>
-#include <pthread.h>
+#include <sched.h>
 
 #define BETA_IMU 0.75l // Change to IMU gyro error
 #define SAMPLE_RATE 1e3l
@@ -59,21 +59,6 @@ IMUDriver::IMUDriver(int interrupt_pin, int sda_pin, int scl_pin, int address)
 
     GPIO::setmode(GPIO::BOARD);
     GPIO::setup(interrupt_pin, GPIO::IN);
-
-    pthread_t this_thread = pthread_self();
-    struct sched_param params;
-    params.sched_priority = 80;
-    // std::cout << "Set realtime priority = " << params.sched_priority << std::endl;
-    int ret = pthread_setschedparam(this_thread, SCHED_FIFO, &params);
-    if (ret != 0)
-    {
-        RCLCPP_ERROR(get_logger(), "Failed to set thread priority!");
-    }
-    else
-    {
-        // Print thread scheduling priority
-        RCLCPP_INFO(get_logger(), "Thread priority is " + std::to_string(params.sched_priority));
-    }
 
     GPIO::add_event_detect(interrupt_pin, GPIO::RISING, *cb_, 1);
 }
@@ -195,8 +180,25 @@ void IMUDriver::madgwickAHRS()
 
 int main(int argc, char **argv)
 {
+    struct sched_param param;
+    memset(&param, 0, sizeof(param));
+    param.sched_priority = 98;
+    int ret = sched_setscheduler(getpid(), SCHED_FIFO, &param);
+
     rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<IMUDriver>(19, 3, 5, 0x68));
+    const auto imu_driver_node = std::make_shared<IMUDriver>(19, 3, 5, 0x68);
+    
+    if (ret != 0)
+    {
+        RCLCPP_ERROR(imu_driver_node->get_logger(), "Failed to set process priority!");
+    }
+    else
+    {
+        // Print thread scheduling priority
+        RCLCPP_INFO(imu_driver_node->get_logger(), "Process priority is " + std::to_string(param.sched_priority));
+    }
+
+    rclcpp::spin(imu_driver_node);
     rclcpp::shutdown();
     return 0;
 }

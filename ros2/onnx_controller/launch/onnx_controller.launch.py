@@ -7,7 +7,8 @@ def generate_launch_description():
             package='imu_driver',
             #namespace='',
             executable='imu_driver',
-            name='imu_driver'
+            name='imu_driver',
+            #prefix=['sudo -E']
         ),
         Node(
             package='motor_driver',
