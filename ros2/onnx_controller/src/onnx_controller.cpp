@@ -2,7 +2,7 @@
 #include <chrono>
 
 #define MAX_VELOCITY 17.8
-#define OUTPUT_SCALE 1.0
+#define OUTPUT_SCALE 1.5
 
 using std::placeholders::_1;
 using namespace std::chrono_literals;
@@ -14,13 +14,10 @@ OnnxController::OnnxController() : Node("onnx_controller")
   output_tensor_ = Ort::Value::CreateTensor<float>(memory_info, output_buffer_, output_size_, output_shape_.data(), output_shape_.size());
 
   command_.name = {"motor_l", "motor_r"};
+  command_.velocity = {0,0};
   imu_state_ = std::make_shared<sensor_msgs::msg::Imu>();
   motor_state_ = std::make_shared<sensor_msgs::msg::JointState>();
   motor_state_->position = {0, 0};
-
-  last_time_ = std::chrono::high_resolution_clock::now();
-  auto control_loop_time = 5ms;
-  control_loop_timer_ = create_wall_timer(control_loop_time, std::bind(&OnnxController::control_loop, this));
 
   // ROS2 setup
   sub_ = create_subscription<sensor_msgs::msg::Imu>(
@@ -34,6 +31,11 @@ OnnxController::OnnxController() : Node("onnx_controller")
   pub_ = create_publisher<sensor_msgs::msg::JointState>(
       "motor_command",
       10);
+
+  last_time_ = std::chrono::high_resolution_clock::now();
+  auto control_loop_time = 5ms;
+  control_loop_timer_ = create_wall_timer(control_loop_time, std::bind(&OnnxController::control_loop, this));
+
 }
 
 OnnxController::~OnnxController()
@@ -63,8 +65,11 @@ void OnnxController::control_loop()
   auto w = imu_state_->orientation.w;
 
   input_buffer_[0] = std::atan2(2 * x * w + 2 * z * y, 1 - 2 * x * x - 2 * y * y);
+
+  RCLCPP_INFO(get_logger(),std::to_string(input_buffer_[0]));
   input_buffer_[1] = command_.velocity[0] / MAX_VELOCITY / OUTPUT_SCALE;
-  input_buffer_[2] = (motor_state_->position[0] + motor_state_->position[1])/2;
+  auto pos = std::tanh((motor_state_->position[0]+motor_state_->position[1])/2);
+  input_buffer_[2] = pos;
       // input_buffer_[4] = imu_state_->angular_velocity.x;
       // input_buffer_[5] = imu_state_->angular_velocity.y;
       // input_buffer_[6] = imu_state_->angular_velocity.z;

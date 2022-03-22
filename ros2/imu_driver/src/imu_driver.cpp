@@ -182,7 +182,7 @@ int main(int argc, char **argv)
 {
     struct sched_param param;
     memset(&param, 0, sizeof(param));
-    param.sched_priority = 98;
+    param.sched_priority = 80;
     int ret = sched_setscheduler(getpid(), SCHED_FIFO, &param);
 
     rclcpp::init(argc, argv);

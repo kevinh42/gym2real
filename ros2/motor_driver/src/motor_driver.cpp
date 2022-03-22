@@ -135,14 +135,14 @@ void MotorDriver::control_loop()
   RCLCPP_INFO(get_logger(),"L: "+std::to_string(encoder_l_count_));
   #endif
 
-  float direction_l = 1;
+  float direction_l = -1;
   if (command_->velocity[0] < 0)
-    direction_l = -1;
+    direction_l = 1;
   float vel_l_target = abs(command_->velocity[0]) * (60. / 6.28); // convert from rad/s to rpm
 
-  float direction_r = 1;
+  float direction_r = -1;
   if (command_->velocity[1] < 0)
-    direction_r = -1;
+    direction_r = 1;
   float vel_r_target = abs(command_->velocity[1]) * (60. / 6.28);
 
 

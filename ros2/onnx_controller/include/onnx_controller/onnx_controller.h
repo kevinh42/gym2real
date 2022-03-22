@@ -5,6 +5,9 @@
 #include <sensor_msgs/msg/imu.hpp>
 #include <onnxruntime_cxx_api.h>
 
+#define NUM_INPUTS 3
+#define NUM_OUTPUTS 1
+
 class OnnxController : public rclcpp::Node
 {
 public:
@@ -28,17 +31,17 @@ private:
     std::chrono::time_point<std::chrono::high_resolution_clock> last_time_;
     rclcpp::TimerBase::SharedPtr control_loop_timer_;
 
-    float input_buffer_[3] = {0};
-    float output_buffer_[1] = {0};
+    float input_buffer_[NUM_INPUTS] = {0};
+    float output_buffer_[NUM_OUTPUTS] = {0};
 
     Ort::Env env_;
     Ort::Session session_{env_, "onnx_controller/Twip.pth.onnx", Ort::SessionOptions{nullptr}};
     Ort::RunOptions opt_{nullptr};
 
     Ort::Value input_tensor_{nullptr};
-    std::array<int64_t, 1> input_shape_{3};
+    std::array<int64_t, 1> input_shape_{NUM_INPUTS};
     Ort::Value output_tensor_{nullptr};
-    std::array<int64_t, 1> output_shape_{1};
-    int input_size_ = 3;//*sizeof(float);
-    int output_size_ = 1;//*sizeof(float);
+    std::array<int64_t, 1> output_shape_{NUM_OUTPUTS};
+    int input_size_ = NUM_INPUTS;//*sizeof(float);
+    int output_size_ = NUM_OUTPUTS;//*sizeof(float);
 };
